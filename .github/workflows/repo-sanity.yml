@@ -1,0 +1,144 @@
+name: Repository Sanity Check
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  repo-sanity:
+    name: Check Repository Cleanliness
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Run cleanup tool in dry-run mode
+        id: cleanup-check
+        run: |
+          node tools/repo-clean.js --dry > cleanup-report.txt 2>&1
+          cat cleanup-report.txt
+          
+      - name: Check for junk files
+        run: |
+          # Extract counts from the report
+          MOVED=$(grep "Files moved to attic:" cleanup-report.txt | awk '{print $NF}')
+          DELETED=$(grep "Files deleted:" cleanup-report.txt | awk '{print $NF}')
+          
+          echo "Files that would be moved: $MOVED"
+          echo "Files that would be deleted: $DELETED"
+          
+          # Fail if there are files to clean
+          if [ "$MOVED" -gt 0 ] || [ "$DELETED" -gt 0 ]; then
+            echo "❌ Repository has junk files that need cleaning!"
+            echo "Run 'npm run clean:dry' locally to see what needs to be cleaned"
+            echo "Run 'npm run clean:repo' to perform the cleanup"
+            exit 1
+          fi
+          
+          echo "✅ Repository is clean!"
+          
+      - name: Run knip to check for unused files
+        run: npm run lint:unused || true
+        continue-on-error: true
+        
+      - name: Validate keep-list compliance
+        run: |
+          # Check for files outside keep-list (excluding attic, node_modules, .git)
+          echo "Checking for files outside keep-list..."
+          
+          VIOLATIONS=$(find . -type f \
+            -not -path "./node_modules/*" \
+            -not -path "./.git/*" \
+            -not -path "./attic/*" \
+            -not -path "./src/*" \
+            -not -path "./services/*" \
+            -not -path "./pipelines/*" \
+            -not -path "./types/*" \
+            -not -path "./scripts/*" \
+            -not -path "./config/*" \
+            -not -path "./docs/*" \
+            -not -path "./test/*" \
+            -not -path "./tests/*" \
+            -not -path "./.github/*" \
+            -not -path "./db/*" \
+            -not -path "./models/*" \
+            -not -path "./routes/*" \
+            -not -path "./lib/*" \
+            -not -path "./migrations/*" \
+            -not -path "./tools/*" \
+            -not -path "./data/*.csv" \
+            -not -path "./data/*.json" \
+            -not -path "./data/*.yaml" \
+            -not -path "./tmp/votes_*/*.xml" \
+            -not -name "package.json" \
+            -not -name "package-lock.json" \
+            -not -name "tsconfig*.json" \
+            -not -name ".eslintrc*" \
+            -not -name ".prettierrc*" \
+            -not -name ".env.example" \
+            -not -name "README.md" \
+            -not -name "LICENSE" \
+            -not -name ".gitignore" \
+            -not -name "jest.config.*" \
+            -not -name "knip.config.*" \
+            -not -name "app.js" \
+            -not -name "server.js" \
+            -not -name "seed.js" \
+            -not -name "*.log" \
+            -not -name "*.tmp" \
+            2>/dev/null || true)
+          
+          if [ -n "$VIOLATIONS" ]; then
+            echo "⚠️  Files found outside keep-list:"
+            echo "$VIOLATIONS"
+            echo ""
+            echo "These files should either be:"
+            echo "  1. Moved to an appropriate directory"
+            echo "  2. Added to .gitignore"
+            echo "  3. Moved to /attic/"
+          else
+            echo "✅ All files are in approved locations"
+          fi
+          
+      - name: Check for tmp/debug patterns
+        run: |
+          echo "Checking for tmp/debug file patterns..."
+          
+          DEBUG_FILES=$(find scripts -type f \( \
+            -name "tmp_*.js" -o \
+            -name "test_*.js" -o \
+            -name "debug_*.js" -o \
+            -name "*_dry.js" -o \
+            -name "*_verbose.js" -o \
+            -name "_*.js" \
+          \) 2>/dev/null || true)
+          
+          if [ -n "$DEBUG_FILES" ]; then
+            echo "❌ Debug/temporary scripts found in scripts/:"
+            echo "$DEBUG_FILES"
+            echo ""
+            echo "These should be moved to /attic/"
+            exit 1
+          fi
+          
+          echo "✅ No debug/temporary scripts found"
+          
+      - name: Upload cleanup report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cleanup-report
+          path: cleanup-report.txt
+          retention-days: 30

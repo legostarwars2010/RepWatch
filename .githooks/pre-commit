@@ -1,0 +1,67 @@
+#!/bin/sh
+# Pre-commit hook to prevent junk files from being committed
+
+echo "Running repository sanity check..."
+
+# Patterns to block
+JUNK_PATTERNS="tmp_.*\.(js|json|txt)|.*\.tmp$|.*\.temp$|_.*\.js$|test_.*\.js$|debug_.*\.js$"
+
+# Check staged files
+STAGED_JUNK=$(git diff --cached --name-only --diff-filter=ACM | grep -E "$JUNK_PATTERNS" || true)
+
+if [ -n "$STAGED_JUNK" ]; then
+  echo ""
+  echo "❌ ERROR: Attempting to commit junk/temporary files:"
+  echo "$STAGED_JUNK" | sed 's/^/  /'
+  echo ""
+  echo "These files should not be committed. Please:"
+  echo "  1. Remove them from staging: git reset HEAD <file>"
+  echo "  2. Add them to .gitignore if they're build artifacts"
+  echo "  3. Move them to /attic/ if they're one-off scripts"
+  echo ""
+  exit 1
+fi
+
+# Check for files in blocked locations
+BLOCKED_LOCATIONS=$(git diff --cached --name-only --diff-filter=ACM | grep -E "^tmp/|/tmp/" || true)
+
+if [ -n "$BLOCKED_LOCATIONS" ]; then
+  echo ""
+  echo "⚠️  WARNING: Committing files in tmp/ directory:"
+  echo "$BLOCKED_LOCATIONS" | sed 's/^/  /'
+  echo ""
+  echo "Only house_roll_*.xml and senate_roll_*.xml files should be in tmp/"
+  
+  # Allow XML roll files, block everything else
+  NON_ROLL_FILES=$(echo "$BLOCKED_LOCATIONS" | grep -v -E "(house|senate)_roll_[0-9]+\.xml$" || true)
+  
+  if [ -n "$NON_ROLL_FILES" ]; then
+    echo ""
+    echo "❌ ERROR: Non-roll files in tmp/ directory:"
+    echo "$NON_ROLL_FILES" | sed 's/^/  /'
+    echo ""
+    echo "These should be added to .gitignore or removed"
+    exit 1
+  fi
+fi
+
+# Run quick cleanup check (dry mode)
+echo "Running cleanup tool dry-run..."
+CLEANUP_OUTPUT=$(node tools/repo-clean.js --dry 2>&1)
+MOVED=$(echo "$CLEANUP_OUTPUT" | grep "Files moved to attic:" | awk '{print $NF}')
+DELETED=$(echo "$CLEANUP_OUTPUT" | grep "Files deleted:" | awk '{print $NF}')
+
+if [ "$MOVED" -gt 0 ] || [ "$DELETED" -gt 0 ]; then
+  echo ""
+  echo "⚠️  WARNING: Repository has uncommitted junk files:"
+  echo "  Files to move to attic: $MOVED"
+  echo "  Files to delete: $DELETED"
+  echo ""
+  echo "Run 'npm run clean:dry' to see details"
+  echo "Run 'npm run clean:repo' to clean before committing"
+  echo ""
+  # Don't block the commit, just warn
+fi
+
+echo "✅ Pre-commit checks passed"
+exit 0

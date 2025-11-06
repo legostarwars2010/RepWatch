@@ -1,0 +1,5 @@
+{
+  "94203": { "state": "CA", "district": "12", "chamber": "house" },
+  "10001": { "state": "NY", "district": "0", "chamber": "senate" },
+  "default": { "state": "CA", "district": "0", "chamber": "house" }
+}

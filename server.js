@@ -1,24 +1,25 @@
-const express = require("express");
-const { initDb } = require("./db/init");
-const apiRoutes = require("./routes/api");
-require("dotenv").config();
+require('dotenv').config();
+const dns = require('dns');
+const app = require('./app');
+const { initDb } = require('./db/init');
 
-const app = express();
-app.use(express.json());
+// Prefer IPv4 addresses first to avoid IPv6 ENETUNREACH in some networks
+if (typeof dns.setDefaultResultOrder === 'function') {
+  try { dns.setDefaultResultOrder('ipv4first'); } catch (e) {}
+}
 
 const PORT = process.env.PORT || 8080;
 
-// Root test
-app.get("/", (req, res) => res.send("RepWatch API is live"));
-
-// Register routes
-app.use("/api", apiRoutes);
-
-// Start server
-app.listen(PORT, async () => {
-  console.log(`🚀 Server running on http://localhost:${PORT}`);
-  await initDb();
-});
-
-console.log("DB URL:", process.env.DATABASE_URL);
+(async function start() {
+  try {
+    await initDb();
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log(`🚀 Server running on http://localhost:${PORT}`);
+      console.log(`📱 Access from phone: http://<your-ip>:${PORT}`);
+    });
+  } catch (err) {
+    console.error('DB initialization failed, shutting down:', err);
+    process.exit(1);
+  }
+})();
 

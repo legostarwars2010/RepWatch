@@ -3,10 +3,17 @@ const { pool } = require("./pool");
 async function waitForDb(maxRetries = 15) {
   for (let i = 1; i <= maxRetries; i++) {
     try {
-      await pool.query("SELECT 1");
+      // Try a direct connect to capture driver-level errors as well
+      const client = await pool.connect();
+      try {
+        await client.query("SELECT 1");
+      } finally {
+        client.release();
+      }
       return;
     } catch (err) {
-      console.log(`⏳ DB not ready (attempt ${i}/${maxRetries}) -> ${err.code || err.message}`);
+      // Log the full error object for diagnostics (including errno/code and stack)
+      console.log(`⏳ DB not ready (attempt ${i}/${maxRetries}) ->`, err);
       await new Promise(r => setTimeout(r, 2000));
     }
   }
@@ -36,6 +43,13 @@ async function initDb() {
         bill_id TEXT,
         vote_date DATE
       )`);
+
+    // Add columns for AI cached summaries if they don't exist
+    await pool.query(`
+      ALTER TABLE issues
+      ADD COLUMN IF NOT EXISTS ai_summary JSONB,
+      ADD COLUMN IF NOT EXISTS ai_summary_updated_at TIMESTAMPTZ
+    `);
 
     await pool.query(`
       CREATE TABLE IF NOT EXISTS vote_records (

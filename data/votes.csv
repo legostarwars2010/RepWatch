@@ -1,0 +1,4 @@
+rep_name,rep_state,rep_chamber,rep_district,bill_id,vote,explanation
+"Jane Doe","CA","house","12","HB-101","Yea","Supports local parks funding"
+"John Smith","CA","house","12","HB-101","Nay","Budget concerns"
+"Alice Brown","NY","senate","0","SB-58","Yea","Supports green incentives"
