@@ -4,10 +4,13 @@
     "main": "server.js",
     "type": "commonjs",
     "scripts": {
+        "dev:client": "vite",
+        "dev:server": "nodemon server.js",
+        "build": "tsc && vite build",
+        "preview": "vite preview",
         "start": "node server.js",
-        "dev": "nodemon server.js",
         "seed": "node seed.js",
-    "ingest:issues": "node scripts/ingest_issues.js --limit=50",
+        "ingest:issues": "node scripts/ingest_issues.js --limit=50",
         "ingest:votes": "node scripts/ingest_votes.js",
         "ingest:members": "node scripts/ingest_members_congress_legislators.js ./data/legislators-current.json",
         "ingest:bills": "node scripts/ingest_bills_congressgov.js --congress=119 --types=hr,s",
@@ -24,10 +27,21 @@
         "js-yaml": "^4.1.0",
         "node-fetch": "^2.6.7",
         "pdf-parse": "^2.2.2",
-        "pg": "^8.12.0"
+        "pg": "^8.12.0",
+        "react": "^18.3.1",
+        "react-dom": "^18.3.1",
+        "react-router-dom": "^6.28.0"
     },
     "devDependencies": {
+        "@types/react": "^18.3.11",
+        "@types/react-dom": "^18.3.1",
+        "@vitejs/plugin-react": "^4.3.3",
+        "autoprefixer": "^10.4.20",
         "jest": "^29.6.0",
-        "supertest": "^7.1.4"
+        "postcss": "^8.4.47",
+        "supertest": "^7.1.4",
+        "tailwindcss": "^3.4.14",
+        "typescript": "^5.6.2",
+        "vite": "^6.0.1"
     }
 }

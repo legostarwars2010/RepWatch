@@ -1,0 +1,60 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  line-height: 1.6;
+  font-weight: 400;
+  color: #ffffff;
+  background-color: #000000;
+  
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* Vote item styling */
+.vote-yea .vote-position,
+.vote-yea .vote-position span,
+.vote-yea .vote-icon,
+.vote-yes .vote-position,
+.vote-yes .vote-position span,
+.vote-yes .vote-icon,
+.vote-aye .vote-position,
+.vote-aye .vote-position span,
+.vote-aye .vote-icon {
+  color: #22c55e !important;
+}
+
+.vote-nay .vote-position,
+.vote-nay .vote-position span,
+.vote-nay .vote-icon,
+.vote-no .vote-position,
+.vote-no .vote-position span,
+.vote-no .vote-icon {
+  color: #ef4444 !important;
+}
+
+.vote-present .vote-position,
+.vote-present .vote-position span,
+.vote-present .vote-icon {
+  color: #a0a0a0 !important;
+}
+
+.vote-not-voting .vote-position,
+.vote-not-voting .vote-position span,
+.vote-not-voting .vote-icon {
+  color: #666666 !important;
+}
