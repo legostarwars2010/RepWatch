@@ -13,12 +13,8 @@
         "ingest:bills": "node scripts/ingest_bills_congressgov.js --congress=119 --types=hr,s",
         "ingest:votes:real": "node scripts/ingest_votes.js --congress=119",
         "test": "jest --runInBand --detectOpenHandles",
-        "clean:repo": "node tools/repo-clean.js",
-        "clean:dry": "node tools/repo-clean.js --dry",
         "lint:unused": "knip",
-        "lint:unused:fix": "knip --fix",
-        "hooks:install": "node tools/install-hooks.js",
-        "postinstall": "node tools/install-hooks.js"
+        "lint:unused:fix": "knip --fix"
     },
     "dependencies": {
         "csv-parse": "^5.4.0",

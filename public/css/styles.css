@@ -27,11 +27,11 @@ body {
     max-width: 1200px;
     margin: 0 auto;
     padding: 2rem 1rem;
+    min-height: calc(100vh - 8rem);
 }
 
 /* Header */
 header {
-    text-align: center;
     margin-bottom: 3rem;
     color: var(--text-primary);
 }
@@ -41,12 +41,37 @@ header h1 {
     margin-bottom: 0.5rem;
     font-weight: 600;
     letter-spacing: -0.02em;
+    text-align: center;
+}
+
+.nav-link {
+    color: var(--text-primary);
+    text-decoration: none;
+    font-weight: 400;
+    transition: font-weight 0.1s ease;
+}
+
+.nav-link:hover {
+    font-weight: 600;
+}
+
+.nav-link-secondary {
+    font-size: 0.9rem;
+    font-weight: 300;
+    color: var(--text-secondary);
+}
+
+.nav-link-secondary:hover {
+    color: var(--text-primary);
+    font-weight: 500;
 }
 
 .tagline {
     font-size: 0.9rem;
     color: var(--text-secondary);
     font-weight: 400;
+    text-align: center;
+    margin-top: 0.5rem;
 }
 
 /* Search Section */
@@ -368,11 +393,66 @@ header h1 {
 
 /* Footer */
 footer {
+    border-top: 1px solid var(--border-color);
+    padding: 2rem 1rem;
+    margin-top: 4rem;
+    background: var(--bg-color);
+}
+
+.footer-content {
+    max-width: 1024px;
+    margin: 0 auto;
     text-align: center;
-    margin-top: 3rem;
-    padding: 2rem;
     color: var(--text-secondary);
-    font-size: 0.8rem;
+}
+
+.footer-copyright {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+}
+
+.footer-tagline {
+    font-size: 0.875rem;
+    margin-bottom: 1.5rem;
+    color: var(--text-secondary);
+}
+
+.footer-nav {
+    display: flex;
+    justify-content: center;
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+}
+
+.footer-nav a {
+    color: var(--text-secondary);
+    text-decoration: none;
+    font-size: 0.875rem;
+    transition: color 0.2s ease;
+}
+
+.footer-nav a:hover {
+    color: var(--text-primary);
+}
+
+.footer-nav a:focus-visible {
+    outline: 2px solid var(--text-primary);
+    outline-offset: 4px;
+    border-radius: 2px;
+}
+
+.footer-attribution {
+    font-size: 0.75rem;
+    color: #666666;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .footer-nav a {
+        transition: none;
+    }
 }
 
 /* Responsive */

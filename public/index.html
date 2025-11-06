@@ -8,8 +8,10 @@
 </head>
 <body>
     <div class="container">
-        <header>
-            <h1>RepWatch</h1>
+        <header style="position: relative;">
+            <h1 style="margin: 0;">
+                <a href="index.html" class="nav-link">RepWatch</a>
+            </h1>
             <p class="tagline">What has your Representative been up to?</p>
         </header>
 
@@ -36,11 +38,21 @@
                 <div id="representativesList"></div>
             </section>
         </main>
-
-        <footer>
-            <p>Data from U.S. House Clerk & Congress.gov</p>
-        </footer>
     </div>
+
+    <footer role="contentinfo">
+        <div class="footer-content">
+            <p class="footer-copyright">RepWatch © 2025</p>
+            <p class="footer-tagline">Bringing clarity and accountability to American democracy.</p>
+            <nav class="footer-nav" aria-label="Footer navigation">
+                <a href="about.html" aria-label="Learn more about RepWatch">About</a>
+                <a href="data-sources.html" aria-label="View our data sources">Data Sources</a>
+                <a href="privacy.html" aria-label="Read our privacy policy">Privacy</a>
+                <a href="contact.html" aria-label="Contact RepWatch">Contact</a>
+            </nav>
+            <p class="footer-attribution">Data from U.S. House Clerk, Senate.gov & Congress.gov</p>
+        </div>
+    </footer>
 
     <script src="/js/app.js"></script>
 </body>

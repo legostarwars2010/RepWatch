@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Sources - RepWatch</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <div class="container">
+        <header style="position: relative;">
+            <h1 style="margin: 0;">
+                <a href="index.html" class="nav-link">RepWatch</a>
+            </h1>
+            <p class="tagline">See how your representatives vote. Every vote. Every time.</p>
+        </header>
+
+        <div class="about-container">
+            <div class="about-section">
+                <h2>Data Sources</h2>
+                <p>RepWatch aggregates official voting records and legislative data from trusted government sources to ensure accuracy and reliability.</p>
+            </div>
+
+            <div class="about-section">
+                <h2>Primary Sources</h2>
+                
+                <div style="margin-top: 2rem;">
+                    <h3 style="font-size: 1.1rem; font-weight: 600; margin-bottom: 0.5rem;">U.S. House Clerk</h3>
+                    <p>Official vote records from the Clerk of the U.S. House of Representatives. We download XML roll call files directly from <a href="https://clerk.house.gov" target="_blank" rel="noopener noreferrer" style="color: var(--text-primary); text-decoration: underline;">clerk.house.gov</a>.</p>
+                </div>
+
+                <div style="margin-top: 2rem;">
+                    <h3 style="font-size: 1.1rem; font-weight: 600; margin-bottom: 0.5rem;">Senate.gov</h3>
+                    <p>Senate voting records retrieved from the official Senate Legislative Information System at <a href="https://www.senate.gov" target="_blank" rel="noopener noreferrer" style="color: var(--text-primary); text-decoration: underline;">senate.gov</a>.</p>
+                </div>
+
+                <div style="margin-top: 2rem;">
+                    <h3 style="font-size: 1.1rem; font-weight: 600; margin-bottom: 0.5rem;">Congress.gov</h3>
+                    <p>Bill text, summaries, and legislative metadata sourced from the Library of Congress via <a href="https://www.congress.gov" target="_blank" rel="noopener noreferrer" style="color: var(--text-primary); text-decoration: underline;">Congress.gov</a>.</p>
+                </div>
+
+                <div style="margin-top: 2rem;">
+                    <h3 style="font-size: 1.1rem; font-weight: 600; margin-bottom: 0.5rem;">U.S. Census Bureau TIGERweb</h3>
+                    <p>Congressional district boundaries and geographic data used for address-to-district resolution, provided by the <a href="https://tigerweb.geo.census.gov" target="_blank" rel="noopener noreferrer" style="color: var(--text-primary); text-decoration: underline;">U.S. Census Bureau</a>.</p>
+                </div>
+            </div>
+
+            <div class="about-section">
+                <h2>AI-Powered Summaries</h2>
+                <p>Bill summaries are generated using OpenAI's GPT models to translate complex legislative language into plain English. All AI-generated content is clearly labeled and based on official bill text from Congress.gov.</p>
+            </div>
+
+            <div class="about-section">
+                <h2>Data Freshness</h2>
+                <p>Vote data is updated periodically from official sources. RepWatch does not modify or editorialize voting records—we display them exactly as reported by the government.</p>
+            </div>
+
+            <div class="about-section">
+                <h2>Open & Transparent</h2>
+                <p>RepWatch is committed to transparency. Our data pipeline is documented, and we only use publicly available government sources. No proprietary data. No hidden algorithms.</p>
+            </div>
+        </div>
+    </div>
+
+    <footer role="contentinfo">
+        <div class="footer-content">
+            <p class="footer-copyright">RepWatch © 2025</p>
+            <p class="footer-tagline">Bringing clarity and accountability to American democracy.</p>
+            <nav class="footer-nav" aria-label="Footer navigation">
+                <a href="about.html" aria-label="Learn more about RepWatch">About</a>
+                <a href="data-sources.html" aria-label="View our data sources">Data Sources</a>
+                <a href="privacy.html" aria-label="Read our privacy policy">Privacy</a>
+                <a href="contact.html" aria-label="Contact RepWatch">Contact</a>
+            </nav>
+            <p class="footer-attribution">Data from U.S. House Clerk, Senate.gov & Congress.gov</p>
+        </div>
+    </footer>
+</body>
+</html>
