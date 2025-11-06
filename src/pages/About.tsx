@@ -5,7 +5,7 @@ export default function About() {
   return (
     <PageShell>
       <PageTitle>
-        About RepWatch
+        About
       </PageTitle>
 
       <div className="max-w-5xl mx-auto px-4 py-8">
