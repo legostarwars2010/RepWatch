@@ -244,14 +244,14 @@ export default function Home() {
                 </div>
                 
                 <div>
-                  <div className="flex justify-between items-center mb-3">
+                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-3">
                     <h3 className="text-lg font-medium">Recent Votes</h3>
                     {rep.votes && rep.votes.length > 0 && (
-                      <div className="flex gap-2 text-sm">
+                      <div className="flex flex-col sm:flex-row gap-2 text-sm">
                         <select 
                           value={categoryFilter}
                           onChange={(e) => setCategoryFilter(e.target.value)}
-                          className="px-2 py-1 bg-oled-bg border border-oled-border/50 rounded text-oled-text"
+                          className="px-2 py-1 bg-oled-bg border border-oled-border/50 rounded text-oled-text w-full sm:w-auto"
                         >
                           <option value="all">All Categories</option>
                           {Array.from(new Set(rep.votes.flatMap(v => v.ai_summary?.categories || []))).sort().map(cat => (
@@ -262,7 +262,7 @@ export default function Home() {
                         <select 
                           value={voteTypeFilter}
                           onChange={(e) => setVoteTypeFilter(e.target.value)}
-                          className="px-2 py-1 bg-oled-bg border border-oled-border/50 rounded text-oled-text"
+                          className="px-2 py-1 bg-oled-bg border border-oled-border/50 rounded text-oled-text w-full sm:w-auto"
                         >
                           <option value="all">All Votes</option>
                           <option value="yea">Yes</option>
@@ -273,7 +273,7 @@ export default function Home() {
                         <select 
                           value={sortOrder}
                           onChange={(e) => setSortOrder(e.target.value)}
-                          className="px-2 py-1 bg-oled-bg border border-oled-border/50 rounded text-oled-text"
+                          className="px-2 py-1 bg-oled-bg border border-oled-border/50 rounded text-oled-text w-full sm:w-auto"
                         >
                           <option value="recent">Most Recent</option>
                           <option value="oldest">Oldest First</option>

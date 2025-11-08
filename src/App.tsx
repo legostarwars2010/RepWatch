@@ -4,6 +4,7 @@ import DataSources from './pages/DataSources'
 import Contact from './pages/Contact'
 import About from './pages/About'
 import Home from './pages/Home'
+import Changelog from './pages/Changelog'
 
 function App() {
   return (
@@ -25,6 +26,7 @@ function App() {
             <Route path="/data-sources" element={<DataSources />} />
             <Route path="/privacy" element={<Privacy />} />
             <Route path="/contact" element={<Contact />} />
+            <Route path="/changelog" element={<Changelog />} />
           </Routes>
         </main>
 
@@ -42,6 +44,9 @@ function App() {
                 </Link>
                 <Link to="/data-sources" className="text-oled-secondary hover:text-oled-text transition-colors">
                   Data Sources
+                </Link>
+                <Link to="/changelog" className="text-oled-secondary hover:text-oled-text transition-colors">
+                  Changelog
                 </Link>
                 <Link to="/privacy" className="text-oled-secondary hover:text-oled-text transition-colors">
                   Privacy
