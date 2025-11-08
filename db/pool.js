@@ -7,16 +7,17 @@ try {
   // dotenv is optional in environments where env vars are already provided
 }
 
-// Use DEV_URL when NODE_ENV is 'dev' or 'development', otherwise use production URLs
+// Use DEV_DB_URL when NODE_ENV is 'dev' or 'development', otherwise use production URLs
 const isDev = process.env.NODE_ENV === 'dev' || process.env.NODE_ENV === 'development';
+console.log('🔧 DB Environment:', isDev ? 'DEVELOPMENT' : 'PRODUCTION');
 const urlRaw = isDev 
-  ? (process.env.DEV_URL || process.env.DATABASE_URL)
+  ? (process.env.DEV_DB_URL || process.env.DEV_URL || process.env.DATABASE_URL)
   : (process.env.DATABASE_URL || process.env.NEON_DATABASE_URL || process.env.DATABASE_PRIVATE_URL);
 
 if (!urlRaw && process.env.NODE_ENV !== 'test') {
   throw new Error(
     isDev 
-      ? "DEV_URL is not set. Set DEV_URL in .env for development."
+      ? "DEV_DB_URL is not set. Set DEV_DB_URL in .env for development."
       : "DATABASE_URL is not set. Set DATABASE_URL (or NEON_DATABASE_URL / DATABASE_PRIVATE_URL) in the environment."
   );
 }

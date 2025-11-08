@@ -9,8 +9,15 @@ interface Vote {
   ai_summary?: {
     short_summary?: string
     medium_summary?: string
+    key_points?: string[]
+    vote_context?: {
+      vote_type?: string
+      stage?: string
+      status_quo_brief?: string
+    }
     what_a_yea_vote_means?: string
     what_a_nay_vote_means?: string
+    categories?: string[]
   }
 }
 
@@ -20,6 +27,8 @@ interface Representative {
   state: string
   district: number | null
   chamber: string
+  phone?: string
+  website?: string
   votes?: Vote[]
 }
 
@@ -30,6 +39,11 @@ export default function Home() {
   const [error, setError] = useState('')
   const [expandedVotes, setExpandedVotes] = useState<Set<string>>(new Set())
   const [votesShownCount, setVotesShownCount] = useState<Map<number, number>>(new Map())
+  
+  // Filter states
+  const [categoryFilter, setCategoryFilter] = useState<string>('all')
+  const [voteTypeFilter, setVoteTypeFilter] = useState<string>('all')
+  const [sortOrder, setSortOrder] = useState<string>('recent')
 
   const getVoteIcon = (vote: string) => {
     const voteUpper = vote.toUpperCase()
@@ -147,14 +161,50 @@ export default function Home() {
             const districtDisplay = rep.district === null || rep.district === 0 ? 'At-Large' : `District ${rep.district}`
             const partyClass = rep.party?.toLowerCase() || ''
             const shownCount = votesShownCount.get(repIndex) || 5
-            const votesToShow = rep.votes?.slice(0, shownCount)
-            const hasMore = rep.votes && rep.votes.length > shownCount
+            
+            // Apply filters
+            let filteredVotes = rep.votes || []
+            
+            // Category filter
+            if (categoryFilter !== 'all') {
+              filteredVotes = filteredVotes.filter(v => 
+                v.ai_summary?.categories?.includes(categoryFilter)
+              )
+            }
+            
+            // Vote type filter
+            if (voteTypeFilter !== 'all') {
+              if (voteTypeFilter === 'yea') {
+                filteredVotes = filteredVotes.filter(v => {
+                  const voteLower = (v.vote || '').toLowerCase()
+                  return voteLower === 'yes' || voteLower === 'yea' || voteLower === 'aye'
+                })
+              } else if (voteTypeFilter === 'nay') {
+                filteredVotes = filteredVotes.filter(v => {
+                  const voteLower = (v.vote || '').toLowerCase()
+                  return voteLower === 'no' || voteLower === 'nay'
+                })
+              } else if (voteTypeFilter === 'other') {
+                filteredVotes = filteredVotes.filter(v => {
+                  const voteLower = (v.vote || '').toLowerCase()
+                  return voteLower === 'present' || voteLower === 'not voting'
+                })
+              }
+            }
+            
+            // Sort order
+            if (sortOrder === 'oldest') {
+              filteredVotes = [...filteredVotes].reverse()
+            }
+            
+            const votesToShow = filteredVotes.slice(0, shownCount)
+            const hasMore = filteredVotes.length > shownCount
             
             return (
               <div key={repIndex} className="p-6 border border-oled-border rounded">
                 <div className="mb-4">
                   <h2 className="text-2xl font-light mb-2">{rep.name}</h2>
-                  <div className="flex gap-2 text-sm">
+                  <div className="flex gap-2 text-sm mb-3">
                     <span className={`px-2 py-1 rounded ${
                       partyClass === 'republican' ? 'bg-red-900/30 text-red-400' :
                       partyClass === 'democrat' ? 'bg-blue-900/30 text-blue-400' :
@@ -166,10 +216,71 @@ export default function Home() {
                       {rep.state} {districtDisplay}
                     </span>
                   </div>
+                  {(rep.phone || rep.website) && (
+                    <div className="flex flex-col gap-1 text-sm text-oled-secondary">
+                      {rep.phone && (
+                        <div className="flex items-center gap-2">
+                          <span>📞</span>
+                          <a href={`tel:${rep.phone}`} className="hover:text-oled-text transition-colors">
+                            {rep.phone}
+                          </a>
+                        </div>
+                      )}
+                      {rep.website && (
+                        <div className="flex items-center gap-2">
+                          <span>🌐</span>
+                          <a 
+                            href={rep.website} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="hover:text-oled-text transition-colors"
+                          >
+                            {rep.website.replace(/^https?:\/\//, '').replace(/\/$/, '')}
+                          </a>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
                 
                 <div>
-                  <h3 className="text-lg font-medium mb-3">Recent Votes</h3>
+                  <div className="flex justify-between items-center mb-3">
+                    <h3 className="text-lg font-medium">Recent Votes</h3>
+                    {rep.votes && rep.votes.length > 0 && (
+                      <div className="flex gap-2 text-sm">
+                        <select 
+                          value={categoryFilter}
+                          onChange={(e) => setCategoryFilter(e.target.value)}
+                          className="px-2 py-1 bg-oled-bg border border-oled-border/50 rounded text-oled-text"
+                        >
+                          <option value="all">All Categories</option>
+                          {Array.from(new Set(rep.votes.flatMap(v => v.ai_summary?.categories || []))).sort().map(cat => (
+                            <option key={cat} value={cat}>{cat}</option>
+                          ))}
+                        </select>
+                        
+                        <select 
+                          value={voteTypeFilter}
+                          onChange={(e) => setVoteTypeFilter(e.target.value)}
+                          className="px-2 py-1 bg-oled-bg border border-oled-border/50 rounded text-oled-text"
+                        >
+                          <option value="all">All Votes</option>
+                          <option value="yea">Yes</option>
+                          <option value="nay">No</option>
+                          <option value="other">Present/Not Voting</option>
+                        </select>
+                        
+                        <select 
+                          value={sortOrder}
+                          onChange={(e) => setSortOrder(e.target.value)}
+                          className="px-2 py-1 bg-oled-bg border border-oled-border/50 rounded text-oled-text"
+                        >
+                          <option value="recent">Most Recent</option>
+                          <option value="oldest">Oldest First</option>
+                        </select>
+                      </div>
+                    )}
+                  </div>
                   {votesToShow && votesToShow.length > 0 ? (
                     <>
                       <div className="space-y-4">
@@ -204,6 +315,19 @@ export default function Home() {
                                 <div className="text-sm text-oled-secondary mb-2 vote-bill">{formatBillId(vote.bill_id)}</div>
                               )}
                               
+                              {vote.ai_summary?.categories && vote.ai_summary.categories.length > 0 && (
+                                <div className="flex flex-wrap gap-1 mb-2">
+                                  {vote.ai_summary.categories.map((cat, idx) => (
+                                    <span 
+                                      key={idx} 
+                                      className="text-xs px-2 py-0.5 bg-oled-border/30 text-oled-secondary rounded"
+                                    >
+                                      {cat}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+                              
                               {vote.ai_summary && (
                                 <>
                                   {vote.ai_summary.short_summary && (
@@ -212,22 +336,32 @@ export default function Home() {
                                     </div>
                                   )}
                                   
-                                  {vote.ai_summary.medium_summary && (
-                                    <>
-                                      <button
-                                        onClick={() => toggleExpand(voteId)}
-                                        className="text-sm text-oled-text hover:text-white transition-colors mb-2 flex items-center gap-1 expand-btn"
-                                      >
-                                        <span className="expand-text">{isExpanded ? 'Read less' : 'Read more'}</span>
-                                        <span className={`expand-icon transition-transform ${isExpanded ? 'rotate-180' : ''}`}>▼</span>
-                                      </button>
-                                      
-                                      {isExpanded && (
-                                        <div className="text-sm text-oled-secondary mb-2 p-3 bg-oled-border/20 rounded medium-summary">
-                                          {vote.ai_summary.medium_summary}
-                                        </div>
+                                  {isExpanded && vote.ai_summary.medium_summary && (
+                                    <div className="text-sm text-oled-secondary mb-3 vote-medium-summary">
+                                      {vote.ai_summary.medium_summary}
+                                    </div>
+                                  )}
+                                  
+                                  {isExpanded && vote.ai_summary.key_points && vote.ai_summary.key_points.length > 0 && (
+                                    <div className="text-sm text-oled-secondary mb-3">
+                                      <strong>Key Points:</strong>
+                                      <ul className="list-disc list-inside mt-1 space-y-1">
+                                        {vote.ai_summary.key_points.map((point, idx) => (
+                                          <li key={idx}>{point}</li>
+                                        ))}
+                                      </ul>
+                                    </div>
+                                  )}
+                                  
+                                  {isExpanded && vote.ai_summary.vote_context && (
+                                    <div className="text-xs text-oled-secondary/70 mb-2 italic">
+                                      {vote.ai_summary.vote_context.stage && vote.ai_summary.vote_context.vote_type && (
+                                        <span>{vote.ai_summary.vote_context.stage} · {vote.ai_summary.vote_context.vote_type}</span>
                                       )}
-                                    </>
+                                      {vote.ai_summary.vote_context.status_quo_brief && (
+                                        <span className="block mt-1">Current law: {vote.ai_summary.vote_context.status_quo_brief}</span>
+                                      )}
+                                    </div>
                                   )}
                                   
                                   <div className="text-sm text-oled-secondary vote-explanation">
@@ -241,6 +375,13 @@ export default function Home() {
                                       <><strong>Not Voting:</strong> Did not cast a vote on this measure</>
                                     ) : null}
                                   </div>
+                                  
+                                  <button
+                                    onClick={() => toggleExpand(voteId)}
+                                    className="mt-2 text-xs text-oled-secondary hover:text-oled-text underline"
+                                  >
+                                    {isExpanded ? 'Show less' : 'Show more details'}
+                                  </button>
                                 </>
                               )}
                             </div>
@@ -253,12 +394,12 @@ export default function Home() {
                           onClick={() => toggleShowMore(repIndex)}
                           className="mt-4 px-4 py-2 bg-oled-border/30 hover:bg-oled-border/50 rounded text-oled-text transition-colors see-more-btn"
                         >
-                          See more ({rep.votes!.length - shownCount} remaining)
+                          See more ({filteredVotes.length - shownCount} remaining)
                         </button>
                       )}
                     </>
                   ) : (
-                    <p className="text-oled-secondary text-sm">No recent votes available</p>
+                    <p className="text-oled-secondary text-sm">No votes match the selected filters</p>
                   )}
                 </div>
               </div>

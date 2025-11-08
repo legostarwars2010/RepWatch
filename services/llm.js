@@ -11,7 +11,7 @@ if (!API_KEY) {
 }
 
 const MODEL = process.env.LLM_MODEL || 'gpt-4o-mini';
-const TIMEOUT_MS = Number(process.env.LLM_TIMEOUT_MS || 8000);
+const TIMEOUT_MS = Number(process.env.LLM_TIMEOUT_MS || 30000); // 30 seconds for complex bills
 const MAX_RETRIES = Number(process.env.LLM_MAX_RETRIES || 2);
 const TEMPERATURE = Number(process.env.LLM_TEMPERATURE || 0.2);
 

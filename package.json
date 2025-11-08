@@ -20,25 +20,26 @@
         "lint:unused:fix": "knip --fix"
     },
     "dependencies": {
+        "@types/react": "^18.3.11",
+        "@types/react-dom": "^18.3.1",
+        "@vitejs/plugin-react": "^4.3.3",
+        "autoprefixer": "^10.4.20",
         "csv-parse": "^5.4.0",
         "dotenv": "^16.3.1",
         "express": "^5.1.0",
         "fast-xml-parser": "^4.2.4",
+        "is-glob": "^4.0.3",
         "js-yaml": "^4.1.0",
         "node-fetch": "^2.6.7",
         "pdf-parse": "^2.2.2",
         "pg": "^8.12.0",
+        "postcss": "^8.4.47",
         "react": "^18.3.1",
         "react-dom": "^18.3.1",
         "react-router-dom": "^6.28.0",
-        "@types/react": "^18.3.11",
-        "@types/react-dom": "^18.3.1",
-        "@vitejs/plugin-react": "^4.3.3",
+        "tailwindcss": "^3.4.14",
         "typescript": "^5.6.2",
-        "vite": "^6.0.1",
-        "autoprefixer": "^10.4.20",
-        "postcss": "^8.4.47",
-        "tailwindcss": "^3.4.14"
+        "vite": "^6.0.1"
     },
     "devDependencies": {
         "jest": "^29.6.0",

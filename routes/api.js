@@ -54,7 +54,7 @@ router.get('/lookup', async (req, res) => {
     // Get representatives for this district
     const { pool } = require('../db/pool');
     const repsQuery = `
-      SELECT id, name, party, state, district, chamber, bioguide_id
+      SELECT id, name, party, state, district, chamber, bioguide_id, phone, website
       FROM representatives
       WHERE state = $1 AND (district = $2 OR district IS NULL)
       ORDER BY chamber DESC, district ASC NULLS FIRST
@@ -77,7 +77,8 @@ router.get('/lookup', async (req, res) => {
           v.chamber,
           i.canonical_bill_id as bill_id,
           i.title,
-          i.ai_summary
+          i.ai_summary,
+          i.categories
         FROM votes v
         LEFT JOIN issues i ON v.issue_id = i.id
         WHERE v.representative_id = $1
@@ -87,9 +88,18 @@ router.get('/lookup', async (req, res) => {
       const { rows: votes } = await pool.query(votesQuery, [rep.id]);
       console.log(`Rep ${rep.name}: found ${votes.length} votes`);
       
+      // Merge categories into ai_summary for frontend compatibility
+      const votesWithMergedData = votes.map(vote => ({
+        ...vote,
+        ai_summary: vote.ai_summary ? {
+          ...vote.ai_summary,
+          categories: vote.categories || vote.ai_summary.categories || []
+        } : null
+      }));
+      
       return {
         ...rep,
-        votes
+        votes: votesWithMergedData
       };
     }));
 
@@ -126,7 +136,7 @@ router.get('/lookup-by-name', async (req, res) => {
     
     // Search for representatives by name (case-insensitive, partial match)
     const repsQuery = `
-      SELECT id, name, party, state, district, chamber, bioguide_id
+      SELECT id, name, party, state, district, chamber, bioguide_id, phone, website
       FROM representatives
       WHERE LOWER(name) LIKE LOWER($1)
       ORDER BY name ASC
@@ -151,7 +161,8 @@ router.get('/lookup-by-name', async (req, res) => {
           v.chamber,
           i.canonical_bill_id as bill_id,
           i.title,
-          i.ai_summary
+          i.ai_summary,
+          i.categories
         FROM votes v
         LEFT JOIN issues i ON v.issue_id = i.id
         WHERE v.representative_id = $1
@@ -160,9 +171,18 @@ router.get('/lookup-by-name', async (req, res) => {
       `;
       const { rows: votes } = await pool.query(votesQuery, [rep.id]);
       
+      // Merge categories into ai_summary for frontend compatibility
+      const votesWithMergedData = votes.map(vote => ({
+        ...vote,
+        ai_summary: vote.ai_summary ? {
+          ...vote.ai_summary,
+          categories: vote.categories || vote.ai_summary.categories || []
+        } : null
+      }));
+      
       return {
         ...rep,
-        votes
+        votes: votesWithMergedData
       };
     }));
 
