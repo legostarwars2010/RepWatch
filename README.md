@@ -71,6 +71,13 @@ RepWatch lets you search by address or representative name to see recent congres
 
 ## Data Ingestion
 
+### Keeping House Votes Up to Date (catch-up + daily)
+
+If your database is behind (e.g. only through September 2025), see **[docs/VOTE_INGESTION_UP_TO_DATE.md](docs/VOTE_INGESTION_UP_TO_DATE.md)** for:
+
+- **One-time catch-up** to today: `npm run ingest:catch-up`
+- **Daily automatic ingest**: `npm run ingest:daily` (schedule via cron, Render, or GitHub Actions)
+
 ### Ingest State Data
 
 To populate the database with representatives and votes for a specific state:

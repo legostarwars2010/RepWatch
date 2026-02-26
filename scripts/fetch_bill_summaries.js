@@ -1,93 +1,86 @@
 #!/usr/bin/env node
 /**
- * Fetch and populate bill summaries from Congress.gov for all issues
- * This enriches the data we feed to the LLM for better AI summaries
+ * Fetch real bill titles (and optional summary/text) from Congress.gov and update issues.
+ * Replaces motion-text titles like "On Passage" / "On Motion to Recommit" with official bill names.
+ * Requires CONGRESS_API_KEY (api.congress.gov).
+ *
+ * Usage: node scripts/fetch_bill_summaries.js [--limit=N]
  */
 
 require('dotenv').config();
-const { Pool } = require('pg');
+const { pool } = require('../db/pool');
 const { fetchBillStatus } = require('../services/congress_api');
 
-// Use DEV database
-const pool = new Pool({
-  connectionString: process.env.DEV_DB_URL,
-  ssl: { rejectUnauthorized: false }
-});
+const args = process.argv.slice(2);
+const limitArg = args.find((a) => a.startsWith('--limit='));
+const LIMIT = limitArg ? parseInt(limitArg.split('=')[1], 10) : 100;
 
-async function populateBillSummaries() {
+async function main() {
   console.log('╔════════════════════════════════════════════════════╗');
-  console.log('║   FETCH BILL SUMMARIES FROM CONGRESS.GOV          ║');
+  console.log('║   FETCH REAL BILL TITLES FROM CONGRESS.GOV        ║');
   console.log('╚════════════════════════════════════════════════════╝\n');
 
-  try {
-    // Get all issues without bill_summary
-    const { rows: issues } = await pool.query(`
-      SELECT id, canonical_bill_id, title
-      FROM issues
-      WHERE canonical_bill_id IS NOT NULL
-        AND bill_summary IS NULL
-      ORDER BY id
-      LIMIT 100
-    `);
+  if (!process.env.CONGRESS_API_KEY) {
+    console.error('CONGRESS_API_KEY is not set. Get a key at https://api.congress.gov/sign-up/');
+    process.exit(1);
+  }
 
-    console.log(`Found ${issues.length} issues to fetch\n`);
+  try {
+    // Issues we want to enrich (canonical_bill_id like HR4758, S284; Congress.gov accepts with or without -119)
+    const { rows: issues } = await pool.query(
+      `SELECT id, canonical_bill_id, title
+       FROM issues
+       WHERE canonical_bill_id IS NOT NULL
+       ORDER BY id
+       LIMIT $1`,
+      [LIMIT]
+    );
+
+    console.log(`Fetching up to ${issues.length} issues (limit ${LIMIT})\n`);
 
     let fetched = 0;
     let errors = 0;
 
-    for (const issue of issues) {
+    for (let i = 0; i < issues.length; i++) {
+      const issue = issues[i];
       try {
-        console.log(`[${fetched + 1}/${issues.length}] ${issue.canonical_bill_id}`);
-        console.log(`   Title: ${issue.title?.substring(0, 60)}...`);
-
-        // Fetch bill data from Congress.gov
         const billData = await fetchBillStatus(issue.canonical_bill_id);
-        
-        if (billData) {
-          // Update database with summary and/or full text
+
+        if (billData && (billData.title || billData.summary || billData.fullText)) {
+          // Prefer real bill title over motion text ("On Passage", etc.)
           await pool.query(
-            `UPDATE issues 
-             SET bill_summary = $1,
-                 title = COALESCE(NULLIF(title, ''), $2),
-                 description = COALESCE(NULLIF(description, ''), $3)
-             WHERE id = $4`,
+            `UPDATE issues
+             SET title = COALESCE($2, title),
+                 description = COALESCE($3, description),
+                 bill_summary = COALESCE($4, bill_summary)
+             WHERE id = $1`,
             [
-              billData.fullText || billData.summary, 
-              billData.title,
-              billData.summary,
-              issue.id
+              issue.id,
+              billData.title || null,
+              billData.summary || null,
+              billData.fullText || billData.summary || null
             ]
           );
-
-          console.log(`   ✓ Title: ${billData.title?.substring(0, 60)}...`);
-          if (billData.fullText) {
-            console.log(`   ✓ Full text: ${billData.fullText.length} characters`);
-          } else if (billData.summary) {
-            console.log(`   ✓ Summary: ${billData.summary.substring(0, 80)}...`);
-          }
           fetched++;
+          console.log(`[${i + 1}/${issues.length}] ✓ ${issue.canonical_bill_id} → ${(billData.title || '').substring(0, 55)}...`);
         } else {
-          console.log(`   ⚠️  No data available`);
+          console.log(`[${i + 1}/${issues.length}] ⚠ ${issue.canonical_bill_id} (no data)`);
         }
 
-        // Rate limiting - wait 2 seconds between requests
-        await new Promise(resolve => setTimeout(resolve, 2000));
-
+        await new Promise((r) => setTimeout(r, 1200));
       } catch (err) {
-        console.error(`   ✗ Error: ${err.message}`);
         errors++;
+        console.error(`[${i + 1}/${issues.length}] ✗ ${issue.canonical_bill_id}: ${err.message}`);
       }
     }
 
-    console.log('\n╔════════════════════════════════════════════════════╗');
-    console.log(`║  COMPLETE: ${fetched} fetched, ${errors} errors`);
-    console.log('╚════════════════════════════════════════════════════╝\n');
-
+    console.log(`\nDone: ${fetched} updated, ${errors} errors.\n`);
   } catch (err) {
-    console.error('Fatal error:', err);
+    console.error('Fatal:', err);
+    process.exit(1);
   } finally {
     await pool.end();
   }
 }
 
-populateBillSummaries();
+main();

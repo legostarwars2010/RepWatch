@@ -5,18 +5,25 @@
 
 /**
  * Fetch bill data and full text
- * @param {string} billId - Canonical bill ID like "hr3015-119"
+ * @param {string} billId - Canonical bill ID like "hr3015-119" or "HR3015" (congress defaults to 119)
  * @returns {Promise<Object|null>} Bill data with full text or null
  */
 async function fetchBillStatus(billId) {
-  // Parse bill ID: "hr3015-119" -> { type: "hr", number: "3015", congress: "119" }
-  const match = billId.match(/^([a-z]+)(\d+)-(\d+)$/);
-  if (!match) {
-    console.error(`Invalid bill ID format: ${billId}`);
-    return null;
+  let billType, billNumber, congress;
+  const withCongress = billId.match(/^([a-z]+)(\d+)-(\d+)$/i);
+  if (withCongress) {
+    [, billType, billNumber, congress] = withCongress;
+    billType = billType.toLowerCase();
+  } else {
+    const noCongress = billId.match(/^([a-zA-Z]+)(\d+)$/);
+    if (!noCongress) {
+      console.error(`Invalid bill ID format: ${billId}`);
+      return null;
+    }
+    billType = noCongress[1].toLowerCase();
+    billNumber = noCongress[2].replace(/^0+/, '') || '0';
+    congress = '119';
   }
-
-  const [, billType, billNumber, congress] = match;
   
   // Congress.gov API v3 with API key
   const apiKey = process.env.CONGRESS_API_KEY;

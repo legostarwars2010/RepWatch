@@ -15,6 +15,9 @@
         "ingest:members": "node scripts/ingest_members_congress_legislators.js ./data/legislators-current.json",
         "ingest:bills": "node scripts/ingest_bills_congressgov.js --congress=119 --types=hr,s",
         "ingest:votes:real": "node scripts/ingest_votes.js --congress=119",
+        "ingest:house": "node scripts/ingest_house_votes.js",
+        "ingest:catch-up": "node scripts/ingest_house_votes.js --catch-up",
+        "ingest:daily": "node scripts/daily_ingest.js",
         "test": "jest --runInBand --detectOpenHandles",
         "lint:unused": "knip",
         "lint:unused:fix": "knip --fix"

@@ -6,6 +6,7 @@ interface Vote {
   vote_date: string
   title?: string
   bill_id?: string
+  categories?: string[]
   ai_summary?: {
     short_summary?: string
     medium_summary?: string
@@ -80,11 +81,22 @@ export default function Home() {
     })
   }
 
-  const toggleShowMore = (repIndex: number) => {
+  const INITIAL_VOTES = 20
+  const LOAD_MORE_STEP = 25
+
+  const showMoreVotes = (repIndex: number, step: number) => {
     setVotesShownCount(prev => {
       const newMap = new Map(prev)
-      const currentCount = newMap.get(repIndex) || 5
-      newMap.set(repIndex, currentCount + 5)
+      const current = newMap.get(repIndex) ?? INITIAL_VOTES
+      newMap.set(repIndex, current + step)
+      return newMap
+    })
+  }
+
+  const showAllVotes = (repIndex: number, total: number) => {
+    setVotesShownCount(prev => {
+      const newMap = new Map(prev)
+      newMap.set(repIndex, total)
       return newMap
     })
   }
@@ -160,7 +172,7 @@ export default function Home() {
           {reps.map((rep, repIndex) => {
             const districtDisplay = rep.district === null || rep.district === 0 ? 'At-Large' : `District ${rep.district}`
             const partyClass = rep.party?.toLowerCase() || ''
-            const shownCount = votesShownCount.get(repIndex) || 5
+            const shownCount = votesShownCount.get(repIndex) ?? INITIAL_VOTES
             
             // Apply filters
             let filteredVotes = rep.votes || []
@@ -198,7 +210,8 @@ export default function Home() {
             }
             
             const votesToShow = filteredVotes.slice(0, shownCount)
-            const hasMore = filteredVotes.length > shownCount
+            const totalVotes = filteredVotes.length
+            const hasMore = totalVotes > shownCount
             
             return (
               <div key={repIndex} className="p-6 border border-oled-border rounded">
@@ -306,7 +319,7 @@ export default function Home() {
                               </div>
                               
                               {vote.title && (
-                                <div className="text-oled-text mb-2 vote-title">
+                                <div className="text-oled-text mb-2 vote-title font-medium">
                                   {vote.title.length > 120 ? `${vote.title.substring(0, 120)}...` : vote.title}
                                 </div>
                               )}
@@ -315,9 +328,9 @@ export default function Home() {
                                 <div className="text-sm text-oled-secondary mb-2 vote-bill">{formatBillId(vote.bill_id)}</div>
                               )}
                               
-                              {vote.ai_summary?.categories && vote.ai_summary.categories.length > 0 && (
+                              {(vote.ai_summary?.categories?.length || vote.categories?.length) ? (
                                 <div className="flex flex-wrap gap-1 mb-2">
-                                  {vote.ai_summary.categories.map((cat, idx) => (
+                                  {(vote.ai_summary?.categories || vote.categories || []).map((cat, idx) => (
                                     <span 
                                       key={idx} 
                                       className="text-xs px-2 py-0.5 bg-oled-border/30 text-oled-secondary rounded"
@@ -326,23 +339,20 @@ export default function Home() {
                                     </span>
                                   ))}
                                 </div>
-                              )}
+                              ) : null}
                               
-                              {vote.ai_summary && (
+                              <div className="text-sm text-oled-secondary mb-2 vote-summary">
+                                {vote.ai_summary?.short_summary || 'Summary not yet available.'}
+                              </div>
+                              
+                              {isExpanded && (
                                 <>
-                                  {vote.ai_summary.short_summary && (
-                                    <div className="text-sm text-oled-secondary mb-2 vote-summary">
-                                      {vote.ai_summary.short_summary}
-                                    </div>
-                                  )}
-                                  
-                                  {isExpanded && vote.ai_summary.medium_summary && (
+                                  {vote.ai_summary?.medium_summary && (
                                     <div className="text-sm text-oled-secondary mb-3 vote-medium-summary">
                                       {vote.ai_summary.medium_summary}
                                     </div>
                                   )}
-                                  
-                                  {isExpanded && vote.ai_summary.key_points && vote.ai_summary.key_points.length > 0 && (
+                                  {vote.ai_summary?.key_points && vote.ai_summary.key_points.length > 0 && (
                                     <div className="text-sm text-oled-secondary mb-3">
                                       <strong>Key Points:</strong>
                                       <ul className="list-disc list-inside mt-1 space-y-1">
@@ -352,8 +362,7 @@ export default function Home() {
                                       </ul>
                                     </div>
                                   )}
-                                  
-                                  {isExpanded && vote.ai_summary.vote_context && (
+                                  {vote.ai_summary?.vote_context && (
                                     <div className="text-xs text-oled-secondary/70 mb-2 italic">
                                       {vote.ai_summary.vote_context.stage && vote.ai_summary.vote_context.vote_type && (
                                         <span>{vote.ai_summary.vote_context.stage} · {vote.ai_summary.vote_context.vote_type}</span>
@@ -363,39 +372,50 @@ export default function Home() {
                                       )}
                                     </div>
                                   )}
-                                  
-                                  <div className="text-sm text-oled-secondary vote-explanation">
-                                    {vote.vote.toUpperCase() === 'YEA' || vote.vote.toUpperCase() === 'AYE' ? (
-                                      <><strong>Voted YES:</strong> {vote.ai_summary.what_a_yea_vote_means || 'Supported this measure'}</>
-                                    ) : vote.vote.toUpperCase() === 'NAY' || vote.vote.toUpperCase() === 'NO' ? (
-                                      <><strong>Voted NO:</strong> {vote.ai_summary.what_a_nay_vote_means || 'Opposed this measure'}</>
-                                    ) : vote.vote.toUpperCase() === 'PRESENT' ? (
-                                      <><strong>Present:</strong> Was there but chose not to vote yes or no</>
-                                    ) : vote.vote.toUpperCase() === 'NOT VOTING' ? (
-                                      <><strong>Not Voting:</strong> Did not cast a vote on this measure</>
-                                    ) : null}
-                                  </div>
-                                  
-                                  <button
-                                    onClick={() => toggleExpand(voteId)}
-                                    className="mt-2 text-xs text-oled-secondary hover:text-oled-text underline"
-                                  >
-                                    {isExpanded ? 'Show less' : 'Show more details'}
-                                  </button>
                                 </>
                               )}
+                              
+                              <div className="text-sm text-oled-secondary vote-explanation mb-2">
+                                {vote.vote.toUpperCase() === 'YEA' || vote.vote.toUpperCase() === 'AYE' || vote.vote.toLowerCase() === 'yes' ? (
+                                  <><strong>Voted YES:</strong> {vote.ai_summary?.what_a_yea_vote_means || 'Supported this measure'}</>
+                                ) : vote.vote.toUpperCase() === 'NAY' || vote.vote.toUpperCase() === 'NO' || vote.vote.toLowerCase() === 'no' ? (
+                                  <><strong>Voted NO:</strong> {vote.ai_summary?.what_a_nay_vote_means || 'Opposed this measure'}</>
+                                ) : vote.vote.toUpperCase() === 'PRESENT' ? (
+                                  <><strong>Present:</strong> Was there but chose not to vote yes or no</>
+                                ) : vote.vote.toUpperCase() === 'NOT VOTING' || vote.vote.toLowerCase() === 'not voting' ? (
+                                  <><strong>Not Voting:</strong> Did not cast a vote on this measure</>
+                                ) : null}
+                              </div>
+                              
+                              <button
+                                onClick={() => toggleExpand(voteId)}
+                                className="text-xs text-oled-secondary hover:text-oled-text underline"
+                              >
+                                {isExpanded ? 'Show less' : 'Show more details'}
+                              </button>
                             </div>
                           )
                         })}
                       </div>
                       
                       {hasMore && (
-                        <button
-                          onClick={() => toggleShowMore(repIndex)}
-                          className="mt-4 px-4 py-2 bg-oled-border/30 hover:bg-oled-border/50 rounded text-oled-text transition-colors see-more-btn"
-                        >
-                          See more ({filteredVotes.length - shownCount} remaining)
-                        </button>
+                        <div className="mt-4 flex flex-wrap items-center gap-3">
+                          <span className="text-sm text-oled-secondary">
+                            Showing {shownCount} of {totalVotes} votes
+                          </span>
+                          <button
+                            onClick={() => showMoreVotes(repIndex, LOAD_MORE_STEP)}
+                            className="px-4 py-2 bg-oled-border/30 hover:bg-oled-border/50 rounded text-oled-text text-sm transition-colors"
+                          >
+                            Show 25 more
+                          </button>
+                          <button
+                            onClick={() => showAllVotes(repIndex, totalVotes)}
+                            className="px-4 py-2 bg-oled-border/20 hover:bg-oled-border/40 rounded text-oled-secondary text-sm transition-colors border border-oled-border/50"
+                          >
+                            Show all {totalVotes}
+                          </button>
+                        </div>
                       )}
                     </>
                   ) : (

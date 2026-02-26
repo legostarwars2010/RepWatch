@@ -75,6 +75,7 @@ router.get('/lookup', async (req, res) => {
           v.vote_date,
           v.roll_call,
           v.chamber,
+          v.vote_metadata,
           i.canonical_bill_id as bill_id,
           i.title,
           i.ai_summary,
@@ -83,19 +84,23 @@ router.get('/lookup', async (req, res) => {
         LEFT JOIN issues i ON v.issue_id = i.id
         WHERE v.representative_id = $1
         ORDER BY v.vote_date DESC, v.roll_call DESC
-        LIMIT 50
+        LIMIT 500
       `;
       const { rows: votes } = await pool.query(votesQuery, [rep.id]);
       console.log(`Rep ${rep.name}: found ${votes.length} votes`);
       
-      // Merge categories into ai_summary for frontend compatibility
-      const votesWithMergedData = votes.map(vote => ({
-        ...vote,
-        ai_summary: vote.ai_summary ? {
-          ...vote.ai_summary,
-          categories: vote.categories || vote.ai_summary.categories || []
-        } : null
-      }));
+      // Merge categories into ai_summary; use vote_metadata.question as fallback title
+      const votesWithMergedData = votes.map(vote => {
+        const title = vote.title || (vote.vote_metadata && vote.vote_metadata.question) || null;
+        return {
+          ...vote,
+          title,
+          ai_summary: vote.ai_summary ? {
+            ...vote.ai_summary,
+            categories: vote.categories || vote.ai_summary.categories || []
+          } : null
+        };
+      });
       
       return {
         ...rep,
@@ -159,6 +164,7 @@ router.get('/lookup-by-name', async (req, res) => {
           v.vote_date,
           v.roll_call,
           v.chamber,
+          v.vote_metadata,
           i.canonical_bill_id as bill_id,
           i.title,
           i.ai_summary,
@@ -167,18 +173,21 @@ router.get('/lookup-by-name', async (req, res) => {
         LEFT JOIN issues i ON v.issue_id = i.id
         WHERE v.representative_id = $1
         ORDER BY v.vote_date DESC, v.roll_call DESC
-        LIMIT 50
+        LIMIT 500
       `;
       const { rows: votes } = await pool.query(votesQuery, [rep.id]);
       
-      // Merge categories into ai_summary for frontend compatibility
-      const votesWithMergedData = votes.map(vote => ({
-        ...vote,
-        ai_summary: vote.ai_summary ? {
-          ...vote.ai_summary,
-          categories: vote.categories || vote.ai_summary.categories || []
-        } : null
-      }));
+      const votesWithMergedData = votes.map(vote => {
+        const title = vote.title || (vote.vote_metadata && vote.vote_metadata.question) || null;
+        return {
+          ...vote,
+          title,
+          ai_summary: vote.ai_summary ? {
+            ...vote.ai_summary,
+            categories: vote.categories || vote.ai_summary.categories || []
+          } : null
+        };
+      });
       
       return {
         ...rep,
