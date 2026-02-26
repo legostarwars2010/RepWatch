@@ -1,0 +1,23 @@
+# Run the full daily pipeline once per day (votes → bill titles → AI summaries).
+# Add these repository secrets: DATABASE_URL, CONGRESS_API_KEY, OPENAI_API_KEY
+name: Daily ingest
+on:
+  schedule:
+    - cron: '0 6 * * *'   # 6:00 AM UTC daily
+  workflow_dispatch:       # allow manual run from Actions tab
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - name: Run daily ingest
+        run: node scripts/daily_ingest.js
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          CONGRESS_API_KEY: ${{ secrets.CONGRESS_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
