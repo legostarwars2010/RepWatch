@@ -7,6 +7,26 @@ export default function Changelog() {
         <h1 className="text-4xl font-light mb-8">Changelog</h1>
         
         <div className="space-y-8">
+          {/* Version 1.2.1 */}
+          <div className="border-l-2 border-oled-border/50 pl-6">
+            <div className="flex items-baseline gap-3 mb-2">
+              <h2 className="text-2xl font-light">v1.2.1</h2>
+              <span className="text-sm text-oled-secondary">February 27, 2026</span>
+            </div>
+            
+            <div className="space-y-4 text-oled-secondary">
+              <div>
+                <h3 className="text-lg text-oled-text mb-2">Issue page and vote display</h3>
+                <ul className="list-disc list-inside space-y-1 ml-2">
+                  <li>Issue detail page now shows one vote per representative (fixed doubling when bills had multiple roll calls).</li>
+                  <li>Fixed issue page not rendering (hooks and error handling).</li>
+                  <li>“Read full bill on Congress.gov” link now appears whenever we have a bill id or title; uses direct bill URL or search as fallback.</li>
+                  <li>Error boundary on the issue page so failures show a clear message instead of a blank screen.</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
           {/* Version 1.2.0 */}
           <div className="border-l-2 border-oled-border/50 pl-6">
             <div className="flex items-baseline gap-3 mb-2">

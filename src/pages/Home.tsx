@@ -1,9 +1,12 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import PageShell from '../components/PageShell'
+import { apiUrl } from '../api'
 
 interface Vote {
   vote: string
   vote_date: string
+  issue_id?: number | null
   title?: string
   bill_id?: string
   categories?: string[]
@@ -23,6 +26,7 @@ interface Vote {
 }
 
 interface Representative {
+  id?: number
   name: string
   party: string
   state: string
@@ -33,11 +37,24 @@ interface Representative {
   votes?: Vote[]
 }
 
+const RECENT_SEARCH_KEY = 'repwatch_last_search'
+
 export default function Home() {
-  const [address, setAddress] = useState('')
+  const [address, setAddress] = useState(() => {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      return window.localStorage.getItem(RECENT_SEARCH_KEY) || ''
+    }
+    return ''
+  })
   const [loading, setLoading] = useState(false)
   const [reps, setReps] = useState<Representative[]>([])
   const [error, setError] = useState('')
+  const [lastSearch, setLastSearch] = useState<string | null>(() => {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      return window.localStorage.getItem(RECENT_SEARCH_KEY)
+    }
+    return null
+  })
   const [expandedVotes, setExpandedVotes] = useState<Set<string>>(new Set())
   const [votesShownCount, setVotesShownCount] = useState<Map<number, number>>(new Map())
   
@@ -101,8 +118,9 @@ export default function Home() {
     })
   }
 
-  const handleSearch = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const runSearch = async (query: string) => {
+    const q = query.trim()
+    if (!q) return
     setLoading(true)
     setError('')
     setReps([])
@@ -110,33 +128,36 @@ export default function Home() {
     setVotesShownCount(new Map())
 
     try {
-      // Detect if input looks like a name (contains letters but no numbers or common address keywords)
-      const hasNumbers = /\d/.test(address)
-      const hasAddressKeywords = /\b(st|street|ave|avenue|rd|road|blvd|boulevard|dr|drive|ln|lane|way|court|ct|place|pl|zip|apt|suite)\b/i.test(address)
-      const isLikelyName = !hasNumbers && !hasAddressKeywords && address.trim().split(/\s+/).length >= 2
-      
+      const hasNumbers = /\d/.test(q)
+      const hasAddressKeywords = /\b(st|street|ave|avenue|rd|road|blvd|boulevard|dr|drive|ln|lane|way|court|ct|place|pl|zip|apt|suite)\b/i.test(q)
+      const isLikelyName = !hasNumbers && !hasAddressKeywords && q.split(/\s+/).length >= 2
+
       let response
       if (isLikelyName) {
-        // Search by name
-        response = await fetch(`/api/lookup-by-name?name=${encodeURIComponent(address)}`)
+        response = await fetch(apiUrl(`/api/lookup-by-name?name=${encodeURIComponent(q)}`))
       } else {
-        // Search by address
-        response = await fetch(`/api/lookup?address=${encodeURIComponent(address)}`)
+        response = await fetch(apiUrl(`/api/lookup?address=${encodeURIComponent(q)}`))
       }
-      
+
       if (!response.ok) throw new Error('Failed to find representative')
-      
       const data = await response.json()
-      
-      // Filter to only show House representatives (no senators for now)
       const houseReps = data.representatives?.filter((rep: Representative) => rep.chamber === 'house') || []
       setReps(houseReps)
+      if (typeof window !== 'undefined' && window.localStorage) {
+        window.localStorage.setItem(RECENT_SEARCH_KEY, q)
+        setLastSearch(q)
+      }
     } catch (err) {
       console.error('Search error:', err)
       setError('Could not find representative. Please check the address/name and try again.')
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault()
+    runSearch(address)
   }
 
   return (
@@ -147,7 +168,7 @@ export default function Home() {
             type="text"
             value={address}
             onChange={(e) => setAddress(e.target.value)}
-            placeholder="Enter an Address or Representative Name"
+            placeholder="Address, ZIP code, or representative name"
             className="flex-1 px-4 py-3 bg-oled-bg border border-oled-border rounded text-oled-text placeholder-oled-secondary focus:outline-none focus:border-oled-text transition-colors"
             required
           />
@@ -160,6 +181,21 @@ export default function Home() {
           </button>
         </div>
       </form>
+      {lastSearch && (
+        <p className="max-w-xl mx-auto text-sm text-oled-secondary mb-4">
+          <span className="mr-2">Recent:</span>
+          <button
+            type="button"
+            onClick={() => {
+              setAddress(lastSearch)
+              runSearch(lastSearch)
+            }}
+            className="text-oled-text hover:underline focus:underline"
+          >
+            Search again for “{lastSearch}”
+          </button>
+        </p>
+      )}
 
       {error && (
         <div className="max-w-xl mx-auto p-4 border border-red-500/30 bg-red-500/10 rounded text-red-400 text-center">
@@ -216,7 +252,13 @@ export default function Home() {
             return (
               <div key={repIndex} className="p-6 border border-oled-border rounded">
                 <div className="mb-4">
-                  <h2 className="text-2xl font-light mb-2">{rep.name}</h2>
+                  <h2 className="text-2xl font-light mb-2">
+                    {rep.id != null ? (
+                      <Link to={`/reps/${rep.id}`} className="hover:underline">{rep.name}</Link>
+                    ) : (
+                      rep.name
+                    )}
+                  </h2>
                   <div className="flex gap-2 text-sm mb-3">
                     <span className={`px-2 py-1 rounded ${
                       partyClass === 'republican' ? 'bg-red-900/30 text-red-400' :
@@ -253,6 +295,14 @@ export default function Home() {
                         </div>
                       )}
                     </div>
+                  )}
+                  {rep.id != null && (
+                    <Link
+                      to={`/reps/${rep.id}`}
+                      className="text-sm text-oled-secondary hover:text-oled-text underline mt-2 inline-block"
+                    >
+                      View full profile →
+                    </Link>
                   )}
                 </div>
                 
@@ -320,7 +370,13 @@ export default function Home() {
                               
                               {vote.title && (
                                 <div className="text-oled-text mb-2 vote-title font-medium">
-                                  {vote.title.length > 120 ? `${vote.title.substring(0, 120)}...` : vote.title}
+                                  {vote.issue_id != null ? (
+                                    <Link to={`/issues/${vote.issue_id}`} className="hover:underline focus:underline">
+                                      {vote.title.length > 120 ? `${vote.title.substring(0, 120)}...` : vote.title}
+                                    </Link>
+                                  ) : (
+                                    vote.title.length > 120 ? `${vote.title.substring(0, 120)}...` : vote.title
+                                  )}
                                 </div>
                               )}
                               
@@ -387,12 +443,22 @@ export default function Home() {
                                 ) : null}
                               </div>
                               
+                              <div className="flex flex-wrap items-center gap-3 mt-2">
                               <button
                                 onClick={() => toggleExpand(voteId)}
                                 className="text-xs text-oled-secondary hover:text-oled-text underline"
                               >
                                 {isExpanded ? 'Show less' : 'Show more details'}
                               </button>
+                              {vote.issue_id != null && (
+                                <Link
+                                  to={`/issues/${vote.issue_id}`}
+                                  className="text-xs text-oled-secondary hover:text-oled-text underline"
+                                >
+                                  View full breakdown →
+                                </Link>
+                              )}
+                            </div>
                             </div>
                           )
                         })}

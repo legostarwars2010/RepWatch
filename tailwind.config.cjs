@@ -11,6 +11,7 @@ module.exports = {
         'oled-text': '#ffffff',
         'oled-secondary': '#a0a0a0',
         'oled-border': '#333333',
+        'oled-card': '#0d0d0d',
       },
       fontFamily: {
         sans: ['-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],

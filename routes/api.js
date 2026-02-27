@@ -76,6 +76,7 @@ router.get('/lookup', async (req, res) => {
           v.roll_call,
           v.chamber,
           v.vote_metadata,
+          v.issue_id,
           i.canonical_bill_id as bill_id,
           i.title,
           i.ai_summary,
@@ -165,6 +166,7 @@ router.get('/lookup-by-name', async (req, res) => {
           v.roll_call,
           v.chamber,
           v.vote_metadata,
+          v.issue_id,
           i.canonical_bill_id as bill_id,
           i.title,
           i.ai_summary,
@@ -264,6 +266,123 @@ router.get('/issues', async (req, res) => {
   } catch (e) {
     console.error('issues list error:', e);
     res.status(500).json({ error: 'Failed to fetch issues' });
+  }
+});
+
+// GET /api/issues/:id — full issue with all votes and outcome (for issue detail page)
+router.get('/issues/:id', async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isFinite(id)) return res.status(400).json({ error: 'Invalid id' });
+
+    const { pool } = require('../db/pool');
+    const issueResult = await pool.query(
+      'SELECT id, title, description, canonical_bill_id, bill_id, bill_summary, ai_summary, categories, vote_date, source FROM issues WHERE id = $1',
+      [id]
+    );
+    const issue = issueResult.rows[0] || null;
+    if (!issue) return res.status(404).json({ error: 'Issue not found' });
+
+    // One row per representative: keep latest vote when an issue has multiple roll calls (e.g. passage + motion to recommit)
+    const votesResult = await pool.query(
+      `WITH ranked AS (
+         SELECT v.vote, v.vote_date, v.roll_call, v.vote_metadata,
+                r.id AS representative_id, r.name AS representative_name, r.party, r.state, r.district,
+                ROW_NUMBER() OVER (PARTITION BY r.id ORDER BY v.vote_date DESC NULLS LAST, COALESCE(v.roll_number, 0) DESC) AS rn
+         FROM votes v
+         JOIN representatives r ON v.representative_id = r.id
+         WHERE v.issue_id = $1
+       )
+       SELECT vote, vote_date, roll_call, vote_metadata,
+              representative_id, representative_name, party, state, district
+       FROM ranked
+       WHERE rn = 1`,
+      [id]
+    );
+    const votesUnsorted = votesResult.rows || [];
+    const votes = votesUnsorted.sort((a, b) => {
+      if (a.state !== b.state) return (a.state || '').localeCompare(b.state || '');
+      const da = a.district != null ? Number(a.district) : 9999;
+      const db = b.district != null ? Number(b.district) : 9999;
+      if (da !== db) return da - db;
+      return (a.representative_name || '').localeCompare(b.representative_name || '');
+    });
+
+    // Outcome: from any vote's metadata (same for all votes on this issue)
+    let result = null;
+    if (votes.length > 0 && votes[0].vote_metadata && typeof votes[0].vote_metadata === 'object') {
+      result = votes[0].vote_metadata.result || null;
+    }
+
+    res.json({
+      issue: {
+        id: issue.id,
+        title: issue.title,
+        description: issue.description,
+        canonical_bill_id: issue.canonical_bill_id,
+        bill_id: issue.bill_id,
+        bill_summary: issue.bill_summary,
+        ai_summary: issue.ai_summary,
+        categories: issue.categories,
+        vote_date: issue.vote_date,
+        source: issue.source
+      },
+      votes: votes.map((v) => ({
+        representative_id: v.representative_id,
+        representative_name: v.representative_name,
+        party: v.party,
+        state: v.state,
+        district: v.district,
+        vote: v.vote,
+        vote_date: v.vote_date,
+        roll_call: v.roll_call
+      })),
+      result
+    });
+  } catch (e) {
+    console.error('issue detail error:', e);
+    res.status(500).json({ error: 'Failed to fetch issue' });
+  }
+});
+
+// GET /api/reps/:id — single representative with all their votes (for rep detail page)
+router.get('/reps/:id', async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isFinite(id)) return res.status(400).json({ error: 'Invalid id' });
+
+    const { pool } = require('../db/pool');
+    const repResult = await pool.query(
+      `SELECT id, name, party, state, district, chamber, bioguide_id, phone, website, contact_json
+       FROM representatives WHERE id = $1`,
+      [id]
+    );
+    const rep = repResult.rows[0] || null;
+    if (!rep) return res.status(404).json({ error: 'Representative not found' });
+
+    const votesResult = await pool.query(
+      `SELECT v.vote, v.vote_date, v.roll_call, v.chamber, v.vote_metadata, v.issue_id,
+              i.canonical_bill_id as bill_id, i.title, i.ai_summary, i.categories
+       FROM votes v
+       LEFT JOIN issues i ON v.issue_id = i.id
+       WHERE v.representative_id = $1
+       ORDER BY v.vote_date DESC, v.roll_call DESC
+       LIMIT 500`,
+      [id]
+    );
+    const votes = (votesResult.rows || []).map((v) => {
+      const title = v.title || (v.vote_metadata && v.vote_metadata.question) || null;
+      return {
+        ...v,
+        title,
+        ai_summary: v.ai_summary ? { ...v.ai_summary, categories: v.categories || v.ai_summary.categories || [] } : null
+      };
+    });
+
+    res.json({ representative: rep, votes });
+  } catch (e) {
+    console.error('rep detail error:', e);
+    res.status(500).json({ error: 'Failed to fetch representative' });
   }
 });
 

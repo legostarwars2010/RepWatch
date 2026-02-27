@@ -5,6 +5,9 @@ import Contact from './pages/Contact'
 import About from './pages/About'
 import Home from './pages/Home'
 import Changelog from './pages/Changelog'
+import Issue from './pages/Issue'
+import Representative from './pages/Representative'
+import ErrorBoundary from './components/ErrorBoundary'
 
 function App() {
   return (
@@ -27,6 +30,8 @@ function App() {
             <Route path="/privacy" element={<Privacy />} />
             <Route path="/contact" element={<Contact />} />
             <Route path="/changelog" element={<Changelog />} />
+            <Route path="/issues/:id" element={<ErrorBoundary><Issue /></ErrorBoundary>} />
+            <Route path="/reps/:id" element={<Representative />} />
           </Routes>
         </main>
 
