@@ -4,7 +4,8 @@
  * Replaces motion-text titles like "On Passage" / "On Motion to Recommit" with official bill names.
  * Requires CONGRESS_API_KEY (api.congress.gov).
  *
- * Usage: node scripts/fetch_bill_summaries.js [--limit=N]
+ * Usage: node scripts/fetch_bill_summaries.js [--limit=N] [--new]
+ *   --new   Only issues that need titles (no bill_summary yet, or motion-text title). Newest first.
  */
 
 require('dotenv').config();
@@ -13,7 +14,8 @@ const { fetchBillStatus } = require('../services/congress_api');
 
 const args = process.argv.slice(2);
 const limitArg = args.find((a) => a.startsWith('--limit='));
-const LIMIT = limitArg ? parseInt(limitArg.split('=')[1], 10) : 100;
+const newOnly = args.includes('--new');
+const LIMIT = limitArg ? parseInt(limitArg.split('=')[1], 10) : newOnly ? 50 : 100;
 
 async function main() {
   console.log('╔════════════════════════════════════════════════════╗');
@@ -26,17 +28,28 @@ async function main() {
   }
 
   try {
-    // Issues we want to enrich (canonical_bill_id like HR4758, S284; Congress.gov accepts with or without -119)
+    // --new: only issues that need real titles (newly created from votes or still have motion text)
+    const whereClause = newOnly
+      ? `canonical_bill_id IS NOT NULL
+         AND (bill_summary IS NULL
+              OR title IS NULL
+              OR title LIKE 'On Passage%'
+              OR title LIKE 'On Motion%'
+              OR title LIKE 'On Agreeing to%'
+              OR title = description)`
+      : 'canonical_bill_id IS NOT NULL';
+    const orderBy = newOnly ? 'id DESC' : 'id';
+
     const { rows: issues } = await pool.query(
       `SELECT id, canonical_bill_id, title
        FROM issues
-       WHERE canonical_bill_id IS NOT NULL
-       ORDER BY id
+       WHERE ${whereClause}
+       ORDER BY ${orderBy}
        LIMIT $1`,
       [LIMIT]
     );
 
-    console.log(`Fetching up to ${issues.length} issues (limit ${LIMIT})\n`);
+    console.log(`Fetching up to ${issues.length} issues (limit ${LIMIT}${newOnly ? ', new/missing titles first' : ''})\n`);
 
     let fetched = 0;
     let errors = 0;

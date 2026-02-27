@@ -49,6 +49,21 @@ async function getLatestRollInDB(year) {
 }
 
 /**
+ * Get the latest vote_date in DB for a given calendar year.
+ */
+async function getLatestVoteDateInDB(year) {
+  const y = Number(year);
+  const result = await pool.query(
+    `SELECT MAX(vote_date)::text as max_date
+     FROM votes
+     WHERE congress = $1 AND chamber = 'house'
+       AND vote_date >= $2 AND vote_date < $3`,
+    [CONGRESS, `${y}-01-01`, `${y + 1}-01-01`]
+  );
+  return result.rows[0]?.max_date || null;
+}
+
+/**
  * Find the highest roll call number available on clerk.house.gov for a given year.
  */
 async function findMaxRollNumber(year) {
@@ -113,7 +128,25 @@ async function findMaxRollNumber(year) {
     await new Promise(resolve => setTimeout(resolve, 100));
   }
   
-  console.log(`✅ Latest roll call: ${maxFound}\n`);
+  // Probe a few higher roll numbers in case Clerk just published (only pull what's new)
+  for (const extra of [1, 2, 3]) {
+    const probeRoll = maxFound + extra;
+    const url = `https://clerk.house.gov/evs/${y}/roll${probeRoll.toString().padStart(3, '0')}.xml`;
+    try {
+      const resp = await fetch(url, { timeout: 5000 });
+      if (resp.ok) {
+        maxFound = probeRoll;
+        console.log(`   (found newer roll ${probeRoll})`);
+      } else {
+        break;
+      }
+      await new Promise(resolve => setTimeout(resolve, 100));
+    } catch (err) {
+      break;
+    }
+  }
+
+  console.log(`✅ Latest roll call on Clerk: ${maxFound}\n`);
   return maxFound;
 }
 
@@ -305,7 +338,8 @@ async function ingestVotesForYear(year) {
   if (allFlag || catchUpFlag) {
     const maxRoll = await findMaxRollNumber(year);
     const latestInDB = await getLatestRollInDB(year);
-    console.log(`📊 [${year}] DB has up to roll ${latestInDB}, Clerk has up to ${maxRoll}`);
+    const latestDateInDB = await getLatestVoteDateInDB(year);
+    console.log(`📊 [${year}] DB has up to roll ${latestInDB} (latest vote_date: ${latestDateInDB || 'none'}); Clerk has up to roll ${maxRoll}`);
     startRoll = maxRoll;
     endRoll = latestInDB + 1;
   } else if (START_ROLL) {
@@ -314,6 +348,8 @@ async function ingestVotesForYear(year) {
   } else {
     const maxRoll = await findMaxRollNumber(year);
     const latestInDB = await getLatestRollInDB(year);
+    const latestDateInDB = await getLatestVoteDateInDB(year);
+    console.log(`📊 [${year}] DB has up to roll ${latestInDB} (latest vote_date: ${latestDateInDB || 'none'}); Clerk has up to roll ${maxRoll}`);
     startRoll = maxRoll;
     endRoll = Math.max(1, Math.max(latestInDB + 1, maxRoll - COUNT + 1));
   }
@@ -322,7 +358,8 @@ async function ingestVotesForYear(year) {
   for (let i = startRoll; i >= endRoll; i--) rolls.push(i);
 
   if (rolls.length === 0) {
-    console.log(`✅ [${year}] No new votes to fetch.\n`);
+    const latestDateInDB = await getLatestVoteDateInDB(year);
+    console.log(`✅ [${year}] No new votes to fetch. (DB latest vote_date: ${latestDateInDB || 'none'})\n`);
     return;
   }
 
@@ -352,7 +389,9 @@ async function ingestVotesForYear(year) {
     await new Promise(resolve => setTimeout(resolve, 100));
   }
 
-  console.log(`\n📊 [${year}] Processed: ${processed}, Succeeded: ${succeeded}, Skipped: ${skipped}, Failed: ${failed}\n`);
+  const latestDateAfter = await getLatestVoteDateInDB(year);
+  console.log(`\n📊 [${year}] Processed: ${processed}, Succeeded: ${succeeded}, Skipped: ${skipped}, Failed: ${failed}`);
+  console.log(`   Latest vote_date in DB for ${year}: ${latestDateAfter || 'none'}\n`);
 }
 
 /**

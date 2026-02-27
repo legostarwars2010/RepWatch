@@ -49,6 +49,17 @@ crontab -e
 0 6 * * * cd /path/to/RepWatch && node scripts/daily_ingest.js
 ```
 
+### Option A2: Windows Task Scheduler (run on your PC daily)
+
+1. Open **Task Scheduler** (search “Task Scheduler” in Windows).
+2. **Create Basic Task** → Name: “RepWatch daily ingest” → **Daily** → Set time (e.g. 6:00 AM).
+3. Action: **Start a program**:
+   - **Program/script:** `C:\Users\YourName\Desktop\RepWatch\RepWatch\scripts\run_daily_ingest.bat` (use the full path to the batch file in your repo).
+   - **Start in:** `C:\Users\YourName\Desktop\RepWatch\RepWatch` (repo root so `.env` is loaded).
+4. Finish. Optionally in **Properties** → **General**, check “Run whether user is logged on or not” so it runs when the PC is locked.
+
+The batch file `scripts/run_daily_ingest.bat` changes to the repo root and runs `node scripts/daily_ingest.js`, so `.env` is loaded correctly.
+
 ### Option B: Render Cron Job
 
 1. In Render, add a **Cron Job** to your RepWatch service (or a new “background” service).
@@ -57,32 +68,18 @@ crontab -e
 4. Set the schedule (e.g. `0 6 * * *` for 6 AM UTC daily).
 5. Add `DATABASE_URL` (and any other env vars the script needs) in the service’s environment.
 
-### Option C: GitHub Actions
+### Option C: GitHub Actions (runs in the cloud; no PC needed)
 
-Create `.github/workflows/daily-ingest.yml`:
+The repo includes `.github/workflows/daily-ingest.yml`. It runs at **6:00 AM UTC** every day (and you can trigger it manually from the Actions tab).
 
-```yaml
-name: Daily vote ingest
-on:
-  schedule:
-    - cron: '0 6 * * *'  # 6 AM UTC daily
-  workflow_dispatch:
-jobs:
-  ingest:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-      - run: npm ci
-      - run: node scripts/daily_ingest.js
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-```
+1. In your GitHub repo: **Settings → Secrets and variables → Actions**.
+2. Add these **repository secrets**:
+   - `DATABASE_URL` — your production Postgres URL
+   - `CONGRESS_API_KEY` — from api.congress.gov
+   - `OPENAI_API_KEY` — for AI summaries
+3. Push the workflow file if you added it yourself, or it’s already in the repo. Scheduled runs will start automatically.
 
-Add `DATABASE_URL` (and any other required vars) as repository secrets.
+To change the time, edit the `cron` line (e.g. `0 12 * * *` = noon UTC).
 
 ## Manual single-year runs
 

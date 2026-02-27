@@ -18,6 +18,7 @@
         "ingest:house": "node scripts/ingest_house_votes.js",
         "ingest:catch-up": "node scripts/ingest_house_votes.js --catch-up",
         "ingest:daily": "node scripts/daily_ingest.js",
+        "ingest:dev": "node scripts/ingest_dev_test.js",
         "test": "jest --runInBand --detectOpenHandles",
         "lint:unused": "knip",
         "lint:unused:fix": "knip --fix"

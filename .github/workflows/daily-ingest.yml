@@ -1,5 +1,7 @@
 # Run the full daily pipeline once per day (votes → bill titles → AI summaries).
 # Add these repository secrets: DATABASE_URL, CONGRESS_API_KEY, OPENAI_API_KEY
+#
+# To see this workflow: Repo → Actions tab → "Daily ingest" in the left sidebar (or "All workflows").
 name: Daily ingest
 on:
   schedule:

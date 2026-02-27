@@ -73,10 +73,30 @@ RepWatch lets you search by address or representative name to see recent congres
 
 ### Keeping House Votes Up to Date (catch-up + daily)
 
-If your database is behind (e.g. only through September 2025), see **[docs/VOTE_INGESTION_UP_TO_DATE.md](docs/VOTE_INGESTION_UP_TO_DATE.md)** for:
+For new bills to appear in the app with **real titles and AI summaries**, the pipeline must run in full (votes → Congress.gov titles → AI summaries). If your database is behind, see **[docs/VOTE_INGESTION_UP_TO_DATE.md](docs/VOTE_INGESTION_UP_TO_DATE.md)**.
 
-- **One-time catch-up** to today: `npm run ingest:catch-up`
-- **Daily automatic ingest**: `npm run ingest:daily` (schedule via cron, Render, or GitHub Actions)
+- **One-time catch-up** (votes only): `npm run ingest:catch-up`
+- **Full daily pipeline** (votes + bill titles + AI summaries): `npm run ingest:daily`  
+  **To run once a day automatically:** see **[docs/VOTE_INGESTION_UP_TO_DATE.md](docs/VOTE_INGESTION_UP_TO_DATE.md)** for cron (Linux/macOS), Windows Task Scheduler, GitHub Actions, or Render. Requires **CONGRESS_API_KEY** and your **LLM config** for summaries.
+- **Votes only** (skip titles/summaries): `node scripts/daily_ingest.js --votes-only`
+
+### Testing on dev
+
+With `NODE_ENV=development` in `.env`, scripts use **DEV_DB_URL** (see `db/pool.js`). Run from the repo root so `.env` is loaded.
+
+1. **If dev DB has no representatives:** ingest one state first:
+   ```bash
+   node scripts/ingest_state.js --state=CA
+   ```
+2. **Small pipeline test** (10 rolls, 10 titles, 10 summaries):
+   ```bash
+   npm run ingest:dev
+   ```
+3. **Full daily pipeline** (all new rolls for current year, then titles + summaries):
+   ```bash
+   npm run ingest:daily
+   ```
+4. **Verify:** Start the app (`npm run dev:server` or `npm start`), hit `/api/lookup?address=...` or `/api/issues`, and confirm bills show real titles and AI summaries.
 
 ### Ingest State Data
 
@@ -92,21 +112,16 @@ This will:
 3. Create issue records for bills
 4. Link votes to representatives
 
-### Generate AI Summaries
+### Bill titles and AI summaries (required for display)
 
-After ingesting votes, generate AI summaries for bills:
+The daily pipeline (`npm run ingest:daily`) runs these automatically:
 
-```bash
-node scripts/regenerate_summaries_with_medium.js
+1. **Bill titles** — `scripts/fetch_bill_summaries.js --new` fetches real titles and CRS summaries from Congress.gov (replaces motion text like "On Passage").
+2. **AI summaries** — `scripts/generate_ai_summaries_for_votes.js` generates `ai_summary` for issues that have title/description/bill_summary.
 
-# Load to database
-node scripts/upsert_votes_to_db.js \
-  --votes data/derived/votes.jsonl
-```
-
-```
-
-This generates short and medium-length AI summaries for all bills in the database.
+To run them manually after a vote ingest:  
+`node scripts/fetch_bill_summaries.js --new --limit=50` then  
+`node scripts/generate_ai_summaries_for_votes.js --limit=50`.
 
 ## API Endpoints
 
