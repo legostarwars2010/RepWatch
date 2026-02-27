@@ -1,0 +1,21 @@
+# Render Blueprint: use this when creating a new Web Service so build/start are correct.
+# The React frontend must be built (npm run build) so server.js can serve dist/ in production.
+services:
+  - type: web
+    name: repwatch
+    runtime: node
+    region: oregon
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: node server.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 8080
+      - key: DATABASE_URL
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: CONGRESS_API_KEY
+        sync: false

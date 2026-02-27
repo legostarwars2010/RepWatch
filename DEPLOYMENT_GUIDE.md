@@ -1,5 +1,24 @@
 # RepWatch Deployment Guide
 
+## Getting your latest changes live (Render)
+
+If you pushed to `main` but the live site still shows the old app (e.g. no Issue or Rep pages):
+
+1. **Check the branch**  
+   In Render: Dashboard → your **repwatch** service → **Settings** → **Branch**. Set it to **main** so deploys run when you push to main.
+
+2. **Check the build command**  
+   Under **Settings** → **Build & Deploy** → **Build Command**, set to:
+   ```bash
+   npm install && npm run build
+   ```
+   Without `npm run build`, the React app is never built and the server has no `dist/` to serve (or serves an old one).
+
+3. **Trigger a deploy**  
+   **Manual Deploy** → **Deploy latest commit**. Wait for the build to finish (a few minutes). The site will then serve the new frontend.
+
+---
+
 ## Prerequisites
 - Neon PostgreSQL database (production branch)
 - Node.js 18+ runtime environment
@@ -11,7 +30,7 @@
 ```bash
 git add .
 git commit -m "Ready for deployment"
-git push origin development
+git push origin main
 ```
 
 ### Step 2: Sign Up for Render
@@ -24,9 +43,9 @@ git push origin development
 2. Connect your `RepWatch` repository
 3. Configure:
    - **Name**: `repwatch`
-   - **Branch**: `development`
+   - **Branch**: `main` (so pushes to main trigger deploys)
    - **Runtime**: `Node`
-   - **Build Command**: `npm install`
+   - **Build Command**: `npm install && npm run build` (required so the React app is built into `dist/`)
    - **Start Command**: `node server.js`
    - **Instance Type**: Free
 
