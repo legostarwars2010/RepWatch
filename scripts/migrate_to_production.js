@@ -18,14 +18,14 @@ const fs = require('fs');
 const path = require('path');
 
 // Configuration
-const DEV_URL = process.env.DEV_URL;
+const DEV_URL = process.env.DEV_DB_URL || process.env.DEV_URL;
 const PROD_URL = process.env.DATABASE_URL;
 const BACKUP_DIR = path.join(__dirname, '..', 'tmp', 'db_backup');
 const TIMESTAMP = new Date().toISOString().replace(/[:.]/g, '-');
 
 // Validate environment variables
 if (!DEV_URL) {
-  console.error('❌ DEV_URL not set in .env file');
+  console.error('❌ DEV_DB_URL or DEV_URL not set in .env file');
   process.exit(1);
 }
 

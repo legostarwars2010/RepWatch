@@ -10,13 +10,13 @@ const fs = require('fs');
 const path = require('path');
 const readline = require('readline');
 
-// Configuration
-const DEV_URL = process.env.DEV_URL;
+// Configuration (DEV_DB_URL or DEV_URL = source; DATABASE_URL = production)
+const DEV_URL = process.env.DEV_DB_URL || process.env.DEV_URL;
 const PROD_URL = process.env.DATABASE_URL;
 
 // Validate environment variables
 if (!DEV_URL) {
-  console.error('❌ DEV_URL not set in .env file');
+  console.error('❌ DEV_DB_URL or DEV_URL not set in .env file');
   process.exit(1);
 }
 
@@ -104,7 +104,7 @@ async function performMigration() {
       )`);
     console.log('   ✓ Created representatives table');
 
-    // Create issues table
+    // Create issues table (match dev: bill_summary, categories, ai_explanations, etc.)
     await prodPool.query(`
       CREATE TABLE IF NOT EXISTS issues (
         id SERIAL PRIMARY KEY,
@@ -115,19 +115,28 @@ async function performMigration() {
         ai_summary JSONB,
         ai_summary_updated_at TIMESTAMPTZ,
         external_ids JSONB,
-        canonical_bill_id TEXT,
+        canonical_bill_id TEXT UNIQUE,
         source TEXT,
         last_synced TIMESTAMPTZ,
-        chamber TEXT
+        chamber TEXT,
+        bill_summary TEXT,
+        categories TEXT[],
+        ai_explanations JSONB,
+        ai_prompt_version TEXT,
+        ai_model TEXT,
+        ai_last_latency_ms INTEGER,
+        ai_last_tokens INTEGER,
+        ai_last_error TEXT,
+        created_at TIMESTAMPTZ DEFAULT now()
       )`);
     console.log('   ✓ Created issues table');
 
-    // Create votes table
+    // Create votes table (match dev: vote_metadata, congress, roll_number, canonical_bill_id)
     await prodPool.query(`
       CREATE TABLE IF NOT EXISTS votes (
         id SERIAL PRIMARY KEY,
         representative_id INTEGER REFERENCES representatives(id) ON DELETE CASCADE,
-        issue_id INTEGER REFERENCES issues(id) ON DELETE CASCADE,
+        issue_id INTEGER REFERENCES issues(id) ON DELETE SET NULL,
         vote TEXT,
         vote_date DATE,
         roll_call TEXT,
@@ -171,28 +180,26 @@ async function performMigration() {
         continue;
       }
 
-      // Insert in batches
-      const batchSize = 1000;
-      let inserted = 0;
+      // Insert in batches (multi-row INSERT for speed; votes table is large)
+      const batchSize = table.name === 'votes' ? 500 : 500;
+      const columns = devData.rows[0] ? Object.keys(devData.rows[0]) : [];
       
       for (let i = 0; i < devData.rows.length; i += batchSize) {
         const batch = devData.rows.slice(i, i + batchSize);
-        
+        const allValues = [];
+        const valueChunks = [];
+        let param = 1;
         for (const row of batch) {
-          const columns = Object.keys(row);
-          const values = Object.values(row);
-          const placeholders = values.map((_, idx) => `$${idx + 1}`).join(', ');
-          
-          const insertSQL = `
-            INSERT INTO ${table.name} (${columns.join(', ')})
-            VALUES (${placeholders})
-            ON CONFLICT (id) DO NOTHING
-          `;
-          
-          await prodPool.query(insertSQL, values);
-          inserted++;
+          const vals = columns.map((c) => row[c]);
+          allValues.push(...vals);
+          valueChunks.push('(' + vals.map(() => `$${param++}`).join(', ') + ')');
         }
-        
+        const insertSQL = `
+          INSERT INTO ${table.name} (${columns.join(', ')})
+          VALUES ${valueChunks.join(', ')}
+          ON CONFLICT (id) DO NOTHING
+        `;
+        await prodPool.query(insertSQL, allValues);
         console.log(`      - Inserted ${Math.min(i + batchSize, devData.rows.length)}/${devData.rows.length}`);
       }
       
