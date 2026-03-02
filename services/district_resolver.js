@@ -145,7 +145,12 @@ async function resolveByZip(zip) {
   const cached = cache.get(key);
   if (cached) return cached;
   const z5 = String(zip).slice(0,5);
-  const entries = zipMap.get(z5) || [];
+  // Filter out incomplete rows (some local/dev CSVs may have blank state/district)
+  const entries = (zipMap.get(z5) || []).filter((e) => {
+    const st = (e && e.state) ? String(e.state).trim().toUpperCase() : '';
+    const cd = (e && e.district) ? String(e.district).trim() : '';
+    return /^[A-Z]{2}$/.test(st) && cd.length > 0;
+  });
   if (entries.length === 1) {
     const res = { state: entries[0].state, district: entries[0].district, chamber: 'house', source: 'zip' };
     cache.set(key, res);
@@ -171,7 +176,9 @@ async function resolveByZip(zip) {
 
 async function geocodeAddress(address) {
   const q = encodeURIComponent(address);
-  const url = `https://nominatim.openstreetmap.org/search?q=${q}&format=json&limit=1&addressdetails=1`;
+  // RepWatch is US-only; restricting prevents Nominatim from resolving US ZIPs to similarly-shaped
+  // postcodes in other countries (e.g. 94539 -> Germany without this).
+  const url = `https://nominatim.openstreetmap.org/search?countrycodes=us&q=${q}&format=json&limit=1&addressdetails=1`;
   const r = await fetch(url, { headers: { 'User-Agent': 'RepWatch/1.0 (contact: none)' } });
   if (!r.ok) return null;
   const j = await r.json();
