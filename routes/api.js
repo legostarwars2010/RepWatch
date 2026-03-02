@@ -33,6 +33,11 @@ setInterval(() => {
   console.log(`LLM cache hit rate: ${rate}% (${llmCacheHits}/${llmRequests})`);
 }, 60000);
 
+// Health check (no DB required) — for Render and debugging
+router.get('/health', (req, res) => {
+  res.json({ ok: true, service: 'repwatch-api' });
+});
+
 // Lookup representatives and their votes by address
 router.get('/lookup', async (req, res) => {
   try {

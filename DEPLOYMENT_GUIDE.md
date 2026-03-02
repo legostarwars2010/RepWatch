@@ -17,6 +17,12 @@ If you pushed to `main` but the live site still shows the old app (e.g. no Issue
 3. **Trigger a deploy**  
    **Manual Deploy** → **Deploy latest commit**. Wait for the build to finish (a few minutes). The site will then serve the new frontend.
 
+4. **If the API returns 404 (lookup/search broken)**  
+   - In Render → your **repwatch** service → **Environment**: remove **PORT** if it is set (e.g. 8080). Render must assign PORT; the app already uses `process.env.PORT`.
+   - Confirm the service is a **Web Service** (Node), not a Static Site. Only a Web Service runs `node server.js` and serves `/api/*`.
+   - Open `https://your-service.onrender.com/api/health` — it should return `{"ok":true,"service":"repwatch-api"}`. If that fails, the backend isn’t reachable (wrong port or wrong service type).
+   - Save and trigger a **Manual Deploy** after changing env.
+
 ---
 
 ## Prerequisites
@@ -54,9 +60,9 @@ In Render dashboard, add these environment variables:
 ```
 DATABASE_URL=<your-neon-production-connection-string>
 NODE_ENV=production
-PORT=8080
 OPENAI_API_KEY=<your-openai-key>
 ```
+**Do not set `PORT`** — Render assigns it automatically. Your app uses `process.env.PORT`; if you override it (e.g. to 8080), Render’s proxy won’t reach your server and `/api/*` will 404.
 
 ### Step 5: Deploy
 - Click "Create Web Service"
