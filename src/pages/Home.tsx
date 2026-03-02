@@ -37,24 +37,11 @@ interface Representative {
   votes?: Vote[]
 }
 
-const RECENT_SEARCH_KEY = 'repwatch_last_search'
-
 export default function Home() {
-  const [address, setAddress] = useState(() => {
-    if (typeof window !== 'undefined' && window.localStorage) {
-      return window.localStorage.getItem(RECENT_SEARCH_KEY) || ''
-    }
-    return ''
-  })
+  const [address, setAddress] = useState('')
   const [loading, setLoading] = useState(false)
   const [reps, setReps] = useState<Representative[]>([])
   const [error, setError] = useState('')
-  const [lastSearch, setLastSearch] = useState<string | null>(() => {
-    if (typeof window !== 'undefined' && window.localStorage) {
-      return window.localStorage.getItem(RECENT_SEARCH_KEY)
-    }
-    return null
-  })
   const [expandedVotes, setExpandedVotes] = useState<Set<string>>(new Set())
   const [votesShownCount, setVotesShownCount] = useState<Map<number, number>>(new Map())
   
@@ -143,10 +130,6 @@ export default function Home() {
       const data = await response.json()
       const houseReps = data.representatives?.filter((rep: Representative) => rep.chamber === 'house') || []
       setReps(houseReps)
-      if (typeof window !== 'undefined' && window.localStorage) {
-        window.localStorage.setItem(RECENT_SEARCH_KEY, q)
-        setLastSearch(q)
-      }
     } catch (err) {
       console.error('Search error:', err)
       setError('Could not find representative. Please check the address/name and try again.')
@@ -162,7 +145,7 @@ export default function Home() {
 
   return (
     <PageShell>
-      <form onSubmit={handleSearch} className="max-w-xl mx-auto mb-12">
+      <form onSubmit={handleSearch} className="max-w-xl mx-auto mb-8">
         <div className="flex gap-3">
           <input
             type="text"
@@ -181,22 +164,6 @@ export default function Home() {
           </button>
         </div>
       </form>
-      {lastSearch && (
-        <p className="max-w-xl mx-auto text-sm text-oled-secondary mb-4">
-          <span className="mr-2">Recent:</span>
-          <button
-            type="button"
-            onClick={() => {
-              setAddress(lastSearch)
-              runSearch(lastSearch)
-            }}
-            className="text-oled-text hover:underline focus:underline"
-          >
-            Search again for “{lastSearch}”
-          </button>
-        </p>
-      )}
-
       {error && (
         <div className="max-w-xl mx-auto p-4 border border-red-500/30 bg-red-500/10 rounded text-red-400 text-center">
           {error}
