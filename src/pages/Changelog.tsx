@@ -7,6 +7,31 @@ export default function Changelog() {
         <h1 className="text-4xl font-light mb-8">Changelog</h1>
         
         <div className="space-y-8">
+          {/* Version 1.2.2 */}
+          <div className="border-l-2 border-oled-border/50 pl-6">
+            <div className="flex items-baseline gap-3 mb-2">
+              <h2 className="text-2xl font-light">v1.2.2</h2>
+              <span className="text-sm text-oled-secondary">March 2, 2026</span>
+            </div>
+            
+            <div className="space-y-4 text-oled-secondary">
+              <div>
+                <h3 className="text-lg text-oled-text mb-2">Representative pages</h3>
+                <ul className="list-disc list-inside space-y-1 ml-2">
+                  <li>Representative profiles now show official congressional headshots when available (with initials fallback).</li>
+                  <li>Representative names in the issue vote breakdown are now clickable to open the full profile page.</li>
+                </ul>
+              </div>
+              
+              <div>
+                <h3 className="text-lg text-oled-text mb-2">Reliability</h3>
+                <ul className="list-disc list-inside space-y-1 ml-2">
+                  <li>Backend no longer crashes when the database drops an idle connection; errors are logged and requests recover on reconnect.</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
           {/* Version 1.2.1 */}
           <div className="border-l-2 border-oled-border/50 pl-6">
             <div className="flex items-baseline gap-3 mb-2">

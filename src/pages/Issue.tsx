@@ -250,7 +250,11 @@ export default function Issue() {
               <tbody>
                 {displayVotes.map((v, idx) => (
                   <tr key={v.representative_id ?? `vote-${idx}`} className="border-b border-oled-border/50 hover:bg-oled-card/30">
-                    <td className="py-2 px-3 text-oled-text">{v.representative_name}</td>
+                    <td className="py-2 px-3 text-oled-text">
+                      <Link to={`/reps/${v.representative_id}`} className="hover:underline">
+                        {v.representative_name}
+                      </Link>
+                    </td>
                     <td className="py-2 px-3">
                       <span className={`px-2 py-0.5 rounded text-xs ${
                         (v.party || '').toLowerCase() === 'republican' ? 'bg-red-900/30 text-red-400' :

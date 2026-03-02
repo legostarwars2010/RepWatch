@@ -65,4 +65,9 @@ const pool = new Pool({
   keepAlive: true,
 });
 
+// Prevent pool errors (e.g. idle connection dropped by Neon) from crashing the process
+pool.on("error", (err) => {
+  console.error("DB pool error (connection lost or idle client error):", err.message);
+});
+
 module.exports = { pool };

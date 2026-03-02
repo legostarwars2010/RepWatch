@@ -345,6 +345,15 @@ router.get('/issues/:id', async (req, res) => {
   }
 });
 
+// Official congressional photo URL (Biographical Directory of the United States Congress)
+function congressPhotoUrl(bioguideId) {
+  if (!bioguideId || typeof bioguideId !== 'string') return null;
+  const id = String(bioguideId).trim();
+  if (!id) return null;
+  const letter = id.charAt(0).toUpperCase();
+  return `https://bioguide.congress.gov/bioguide/photo/${letter}/${id}.jpg`;
+}
+
 // GET /api/reps/:id — single representative with all their votes (for rep detail page)
 router.get('/reps/:id', async (req, res) => {
   try {
@@ -357,8 +366,9 @@ router.get('/reps/:id', async (req, res) => {
        FROM representatives WHERE id = $1`,
       [id]
     );
-    const rep = repResult.rows[0] || null;
-    if (!rep) return res.status(404).json({ error: 'Representative not found' });
+    const row = repResult.rows[0] || null;
+    if (!row) return res.status(404).json({ error: 'Representative not found' });
+    const rep = { ...row, photo_url: congressPhotoUrl(row.bioguide_id) };
 
     const votesResult = await pool.query(
       `SELECT v.vote, v.vote_date, v.roll_call, v.chamber, v.vote_metadata, v.issue_id,

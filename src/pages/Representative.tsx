@@ -31,6 +31,7 @@ interface Rep {
   phone: string | null
   website: string | null
   contact_json?: unknown
+  photo_url: string | null
 }
 
 interface RepResponse {
@@ -100,6 +101,7 @@ export default function Representative() {
   const { representative: rep, votes } = data
   const partyClass = (rep.party || '').toLowerCase()
   const districtDisplay = rep.district === null || rep.district === 0 ? 'At-Large' : `District ${rep.district}`
+  const initials = rep.name ? rep.name.split(/\s+/).map((n) => n.charAt(0)).join('').slice(0, 2).toUpperCase() : '?'
 
   return (
     <PageShell>
@@ -108,7 +110,29 @@ export default function Representative() {
         <Link to="/" className="text-sm text-oled-secondary hover:text-oled-text mb-6 inline-block">← Back to search</Link>
 
         {/* Profile */}
-        <div className="mb-10 p-6 border border-oled-border rounded">
+        <div className="mb-10 p-6 border border-oled-border rounded flex flex-col sm:flex-row gap-6">
+          <div className="flex-shrink-0">
+            {rep.photo_url ? (
+              <img
+                src={rep.photo_url}
+                alt={`${rep.name} official portrait`}
+                className="w-32 h-32 rounded-full object-cover border border-oled-border bg-oled-card"
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none'
+                  const fallback = e.currentTarget.nextElementSibling
+                  if (fallback) (fallback as HTMLElement).style.display = 'flex'
+                }}
+              />
+            ) : null}
+            <div
+              className="w-32 h-32 rounded-full border border-oled-border bg-oled-card flex items-center justify-center text-2xl font-light text-oled-secondary"
+              style={{ display: rep.photo_url ? 'none' : 'flex' }}
+              aria-hidden
+            >
+              {initials}
+            </div>
+          </div>
+          <div className="min-w-0">
           <h1 className="text-2xl md:text-3xl font-light text-oled-text mb-3">{rep.name}</h1>
           <div className="flex flex-wrap gap-2 text-sm mb-4">
             <span className={`px-2 py-1 rounded ${
@@ -153,6 +177,7 @@ export default function Representative() {
               )}
             </div>
           )}
+          </div>
         </div>
 
         {/* Votes */}
