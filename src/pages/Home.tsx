@@ -42,13 +42,6 @@ export default function Home() {
   const [loading, setLoading] = useState(false)
   const [reps, setReps] = useState<Representative[]>([])
   const [error, setError] = useState('')
-  const [expandedVotes, setExpandedVotes] = useState<Set<string>>(new Set())
-  const [votesShownCount, setVotesShownCount] = useState<Map<number, number>>(new Map())
-  
-  // Filter states
-  const [categoryFilter, setCategoryFilter] = useState<string>('all')
-  const [voteTypeFilter, setVoteTypeFilter] = useState<string>('all')
-  const [sortOrder, setSortOrder] = useState<string>('recent')
 
   const getVoteIcon = (vote: string) => {
     const voteUpper = vote.toUpperCase()
@@ -59,60 +52,12 @@ export default function Home() {
     return '•'
   }
 
-  const getVoteClass = (vote: string) => {
-    return vote.toLowerCase().replace(/\s+/g, '-')
-  }
-
-  const formatBillId = (billId: string) => {
-    const match = billId.match(/^([a-z]+)(\d+)-(\d+)$/)
-    if (match) {
-      const [, type, number, congress] = match
-      const typeUpper = type.toUpperCase().split('').join('.') + '.'
-      return `${typeUpper} ${number} (${congress}th Congress)`
-    }
-    return billId
-  }
-
-  const toggleExpand = (voteId: string) => {
-    setExpandedVotes(prev => {
-      const newSet = new Set(prev)
-      if (newSet.has(voteId)) {
-        newSet.delete(voteId)
-      } else {
-        newSet.add(voteId)
-      }
-      return newSet
-    })
-  }
-
-  const INITIAL_VOTES = 20
-  const LOAD_MORE_STEP = 25
-
-  const showMoreVotes = (repIndex: number, step: number) => {
-    setVotesShownCount(prev => {
-      const newMap = new Map(prev)
-      const current = newMap.get(repIndex) ?? INITIAL_VOTES
-      newMap.set(repIndex, current + step)
-      return newMap
-    })
-  }
-
-  const showAllVotes = (repIndex: number, total: number) => {
-    setVotesShownCount(prev => {
-      const newMap = new Map(prev)
-      newMap.set(repIndex, total)
-      return newMap
-    })
-  }
-
   const runSearch = async (query: string) => {
     const q = query.trim()
     if (!q) return
     setLoading(true)
     setError('')
     setReps([])
-    setExpandedVotes(new Set())
-    setVotesShownCount(new Map())
 
     try {
       const hasNumbers = /\d/.test(q)
@@ -175,46 +120,7 @@ export default function Home() {
           {reps.map((rep, repIndex) => {
             const districtDisplay = rep.district === null || rep.district === 0 ? 'At-Large' : `District ${rep.district}`
             const partyClass = rep.party?.toLowerCase() || ''
-            const shownCount = votesShownCount.get(repIndex) ?? INITIAL_VOTES
-            
-            // Apply filters
-            let filteredVotes = rep.votes || []
-            
-            // Category filter
-            if (categoryFilter !== 'all') {
-              filteredVotes = filteredVotes.filter(v => 
-                v.ai_summary?.categories?.includes(categoryFilter)
-              )
-            }
-            
-            // Vote type filter
-            if (voteTypeFilter !== 'all') {
-              if (voteTypeFilter === 'yea') {
-                filteredVotes = filteredVotes.filter(v => {
-                  const voteLower = (v.vote || '').toLowerCase()
-                  return voteLower === 'yes' || voteLower === 'yea' || voteLower === 'aye'
-                })
-              } else if (voteTypeFilter === 'nay') {
-                filteredVotes = filteredVotes.filter(v => {
-                  const voteLower = (v.vote || '').toLowerCase()
-                  return voteLower === 'no' || voteLower === 'nay'
-                })
-              } else if (voteTypeFilter === 'other') {
-                filteredVotes = filteredVotes.filter(v => {
-                  const voteLower = (v.vote || '').toLowerCase()
-                  return voteLower === 'present' || voteLower === 'not voting'
-                })
-              }
-            }
-            
-            // Sort order
-            if (sortOrder === 'oldest') {
-              filteredVotes = [...filteredVotes].reverse()
-            }
-            
-            const votesToShow = filteredVotes.slice(0, shownCount)
-            const totalVotes = filteredVotes.length
-            const hasMore = totalVotes > shownCount
+            const votesToShow = (rep.votes || []).slice(0, 5)
             
             return (
               <div key={repIndex} className="p-6 border border-oled-border rounded">
@@ -274,185 +180,68 @@ export default function Home() {
                 </div>
                 
                 <div>
-                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-3">
-                    <h3 className="text-lg font-medium">Recent Votes</h3>
-                    {rep.votes && rep.votes.length > 0 && (
-                      <div className="flex flex-col sm:flex-row gap-2 text-sm">
-                        <select 
-                          value={categoryFilter}
-                          onChange={(e) => setCategoryFilter(e.target.value)}
-                          className="px-2 py-1 bg-oled-bg border border-oled-border/50 rounded text-oled-text w-full sm:w-auto"
-                        >
-                          <option value="all">All Categories</option>
-                          {Array.from(new Set(rep.votes.flatMap(v => v.ai_summary?.categories || []))).sort().map(cat => (
-                            <option key={cat} value={cat}>{cat}</option>
-                          ))}
-                        </select>
-                        
-                        <select 
-                          value={voteTypeFilter}
-                          onChange={(e) => setVoteTypeFilter(e.target.value)}
-                          className="px-2 py-1 bg-oled-bg border border-oled-border/50 rounded text-oled-text w-full sm:w-auto"
-                        >
-                          <option value="all">All Votes</option>
-                          <option value="yea">Yes</option>
-                          <option value="nay">No</option>
-                          <option value="other">Present/Not Voting</option>
-                        </select>
-                        
-                        <select 
-                          value={sortOrder}
-                          onChange={(e) => setSortOrder(e.target.value)}
-                          className="px-2 py-1 bg-oled-bg border border-oled-border/50 rounded text-oled-text w-full sm:w-auto"
-                        >
-                          <option value="recent">Most Recent</option>
-                          <option value="oldest">Oldest First</option>
-                        </select>
-                      </div>
+                  <div className="flex items-center justify-between gap-3 mb-3">
+                    <h3 className="text-lg font-medium">Recent votes</h3>
+                    {rep.votes && rep.votes.length > 5 && (
+                      <span className="text-xs text-oled-secondary">
+                        Showing 5 of {rep.votes.length} votes
+                      </span>
                     )}
                   </div>
                   {votesToShow && votesToShow.length > 0 ? (
-                    <>
-                      <div className="space-y-4">
-                        {votesToShow.map((vote, voteIndex) => {
-                          const voteDate = new Date(vote.vote_date).toLocaleDateString('en-US', { 
-                            year: 'numeric', 
-                            month: 'short', 
-                            day: 'numeric' 
-                          })
-                          const voteIcon = getVoteIcon(vote.vote)
-                          const voteClass = getVoteClass(vote.vote)
-                          const voteId = `vote-${repIndex}-${voteIndex}`
-                          const isExpanded = expandedVotes.has(voteId)
-                          
-                          return (
-                            <div key={voteIndex} className={`p-4 border border-oled-border/50 rounded vote-item vote-${voteClass}`}>
-                              <div className="flex justify-between items-start mb-2">
-                                <div className="flex items-center gap-2 vote-position">
-                                  <span className="vote-icon font-bold text-lg">{voteIcon}</span>
-                                  <span className="font-medium">{vote.vote}</span>
-                                </div>
-                                <span className="text-sm text-oled-secondary vote-date">{voteDate}</span>
+                    <div className="space-y-3">
+                      {votesToShow.map((vote, voteIndex) => {
+                        const voteDate = new Date(vote.vote_date).toLocaleDateString('en-US', {
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric'
+                        })
+                        const voteIcon = getVoteIcon(vote.vote)
+                        const title = vote.title || 'Vote'
+                        
+                        return (
+                          <div key={voteIndex} className="p-4 border border-oled-border/50 rounded">
+                            <div className="flex justify-between items-start mb-1">
+                              <div className="flex items-center gap-2">
+                                <span className="font-bold text-lg">{voteIcon}</span>
+                                <span className="font-medium">
+                                  {vote.vote || '—'}
+                                </span>
                               </div>
-                              
-                              {vote.title && (
-                                <div className="text-oled-text mb-2 vote-title font-medium">
-                                  {vote.issue_id != null ? (
-                                    <Link to={`/issues/${vote.issue_id}`} className="hover:underline focus:underline">
-                                      {vote.title.length > 120 ? `${vote.title.substring(0, 120)}...` : vote.title}
-                                    </Link>
-                                  ) : (
-                                    vote.title.length > 120 ? `${vote.title.substring(0, 120)}...` : vote.title
-                                  )}
-                                </div>
+                              <span className="text-sm text-oled-secondary">{voteDate}</span>
+                            </div>
+                            <div className="text-oled-text text-sm mb-1">
+                              {vote.issue_id != null ? (
+                                <Link to={`/issues/${vote.issue_id}`} className="hover:underline">
+                                  {title.length > 100 ? `${title.substring(0, 100)}...` : title}
+                                </Link>
+                              ) : (
+                                title.length > 100 ? `${title.substring(0, 100)}...` : title
                               )}
-                              
-                              {vote.bill_id && (
-                                <div className="text-sm text-oled-secondary mb-2 vote-bill">{formatBillId(vote.bill_id)}</div>
-                              )}
-                              
-                              {(vote.ai_summary?.categories?.length || vote.categories?.length) ? (
-                                <div className="flex flex-wrap gap-1 mb-2">
-                                  {(vote.ai_summary?.categories || vote.categories || []).map((cat, idx) => (
-                                    <span 
-                                      key={idx} 
-                                      className="text-xs px-2 py-0.5 bg-oled-border/30 text-oled-secondary rounded"
-                                    >
-                                      {cat}
-                                    </span>
-                                  ))}
-                                </div>
-                              ) : null}
-                              
-                              <div className="text-sm text-oled-secondary mb-2 vote-summary">
-                                {vote.ai_summary?.short_summary || 'Summary not yet available.'}
+                            </div>
+                            {vote.ai_summary?.short_summary && (
+                              <div className="text-xs text-oled-secondary mb-1">
+                                {vote.ai_summary.short_summary.length > 140
+                                  ? `${vote.ai_summary.short_summary.substring(0, 140)}...`
+                                  : vote.ai_summary.short_summary}
                               </div>
-                              
-                              {isExpanded && (
-                                <>
-                                  {vote.ai_summary?.medium_summary && (
-                                    <div className="text-sm text-oled-secondary mb-3 vote-medium-summary">
-                                      {vote.ai_summary.medium_summary}
-                                    </div>
-                                  )}
-                                  {vote.ai_summary?.key_points && vote.ai_summary.key_points.length > 0 && (
-                                    <div className="text-sm text-oled-secondary mb-3">
-                                      <strong>Key Points:</strong>
-                                      <ul className="list-disc list-inside mt-1 space-y-1">
-                                        {vote.ai_summary.key_points.map((point, idx) => (
-                                          <li key={idx}>{point}</li>
-                                        ))}
-                                      </ul>
-                                    </div>
-                                  )}
-                                  {vote.ai_summary?.vote_context && (
-                                    <div className="text-xs text-oled-secondary/70 mb-2 italic">
-                                      {vote.ai_summary.vote_context.stage && vote.ai_summary.vote_context.vote_type && (
-                                        <span>{vote.ai_summary.vote_context.stage} · {vote.ai_summary.vote_context.vote_type}</span>
-                                      )}
-                                      {vote.ai_summary.vote_context.status_quo_brief && (
-                                        <span className="block mt-1">Current law: {vote.ai_summary.vote_context.status_quo_brief}</span>
-                                      )}
-                                    </div>
-                                  )}
-                                </>
-                              )}
-                              
-                              <div className="text-sm text-oled-secondary vote-explanation mb-2">
-                                {vote.vote.toUpperCase() === 'YEA' || vote.vote.toUpperCase() === 'AYE' || vote.vote.toLowerCase() === 'yes' ? (
-                                  <><strong>Voted YES:</strong> {vote.ai_summary?.what_a_yea_vote_means || 'Supported this measure'}</>
-                                ) : vote.vote.toUpperCase() === 'NAY' || vote.vote.toUpperCase() === 'NO' || vote.vote.toLowerCase() === 'no' ? (
-                                  <><strong>Voted NO:</strong> {vote.ai_summary?.what_a_nay_vote_means || 'Opposed this measure'}</>
-                                ) : vote.vote.toUpperCase() === 'PRESENT' ? (
-                                  <><strong>Present:</strong> Was there but chose not to vote yes or no</>
-                                ) : vote.vote.toUpperCase() === 'NOT VOTING' || vote.vote.toLowerCase() === 'not voting' ? (
-                                  <><strong>Not Voting:</strong> Did not cast a vote on this measure</>
-                                ) : null}
-                              </div>
-                              
-                              <div className="flex flex-wrap items-center gap-3 mt-2">
-                              <button
-                                onClick={() => toggleExpand(voteId)}
-                                className="text-xs text-oled-secondary hover:text-oled-text underline"
-                              >
-                                {isExpanded ? 'Show less' : 'Show more details'}
-                              </button>
-                              {vote.issue_id != null && (
+                            )}
+                            {vote.issue_id != null && (
+                              <div className="mt-1">
                                 <Link
                                   to={`/issues/${vote.issue_id}`}
                                   className="text-xs text-oled-secondary hover:text-oled-text underline"
                                 >
                                   View full breakdown →
                                 </Link>
-                              )}
-                            </div>
-                            </div>
-                          )
-                        })}
-                      </div>
-                      
-                      {hasMore && (
-                        <div className="mt-4 flex flex-wrap items-center gap-3">
-                          <span className="text-sm text-oled-secondary">
-                            Showing {shownCount} of {totalVotes} votes
-                          </span>
-                          <button
-                            onClick={() => showMoreVotes(repIndex, LOAD_MORE_STEP)}
-                            className="px-4 py-2 bg-oled-border/30 hover:bg-oled-border/50 rounded text-oled-text text-sm transition-colors"
-                          >
-                            Show 25 more
-                          </button>
-                          <button
-                            onClick={() => showAllVotes(repIndex, totalVotes)}
-                            className="px-4 py-2 bg-oled-border/20 hover:bg-oled-border/40 rounded text-oled-secondary text-sm transition-colors border border-oled-border/50"
-                          >
-                            Show all {totalVotes}
-                          </button>
-                        </div>
-                      )}
-                    </>
+                              </div>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
                   ) : (
-                    <p className="text-oled-secondary text-sm">No votes match the selected filters</p>
+                    <p className="text-oled-secondary text-sm">No recent votes available.</p>
                   )}
                 </div>
               </div>
