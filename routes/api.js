@@ -1,4 +1,5 @@
 const express = require("express");
+const crypto = require("crypto");
 const router = express.Router();
 const { getAllReps } = require("../models/reps");
 const { getIssueById, getCachedSummary, isSummaryFresh, isExplainFresh, writeSummary, writeExplain } = require("../models/issues");
@@ -36,6 +37,102 @@ setInterval(() => {
 // Health check (no DB required) — for Render and debugging
 router.get('/health', (req, res) => {
   res.json({ ok: true, service: 'repwatch-api' });
+});
+
+// ——— Email notifications (subscribe / unsubscribe) ———
+
+// POST /api/subscribe — subscribe email to one or more reps
+router.post('/subscribe', async (req, res) => {
+  const { pool } = require('../db/pool');
+  try {
+    const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : '';
+    const representativeIds = Array.isArray(req.body?.representative_ids)
+      ? req.body.representative_ids.filter((id) => Number.isInteger(id) && id > 0)
+      : [];
+
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.status(400).json({ error: 'Valid email required' });
+    }
+    if (representativeIds.length === 0) {
+      return res.status(400).json({ error: 'At least one representative_id required' });
+    }
+
+    const validReps = await pool.query(
+      'SELECT id FROM representatives WHERE id = ANY($1::int[])',
+      [representativeIds]
+    );
+    const validIds = validReps.rows.map((r) => r.id);
+    if (validIds.length === 0) {
+      return res.status(400).json({ error: 'No valid representative IDs found' });
+    }
+
+    const unsubToken = crypto.randomBytes(24).toString('hex');
+    const userResult = await pool.query(
+      `INSERT INTO users (email, unsub_token)
+       VALUES ($1, $2)
+       ON CONFLICT (email) DO UPDATE SET updated_at = now()
+       RETURNING id, unsub_token`,
+      [email, unsubToken]
+    );
+    const row = userResult.rows[0];
+    const userId = row.id;
+    const tokenToReturn = row.unsub_token;
+
+    for (const repId of validIds) {
+      await pool.query(
+        `INSERT INTO rep_subscriptions (user_id, representative_id)
+         VALUES ($1, $2)
+         ON CONFLICT (user_id, representative_id) DO UPDATE SET paused_at = NULL, updated_at = now()`,
+        [userId, repId]
+      );
+    }
+
+    res.status(200).json({
+      subscribed: true,
+      message: `Subscribed to ${validIds.length} representative(s). Check your inbox for updates.`,
+      unsub_token: tokenToReturn,
+    });
+  } catch (e) {
+    console.error('Subscribe error:', e);
+    res.status(500).json({ error: 'Subscription failed' });
+  }
+});
+
+// GET /api/unsubscribe?token=... — one-click unsubscribe (for email links); returns HTML
+router.get('/unsubscribe', async (req, res) => {
+  const { pool } = require('../db/pool');
+  const token = typeof req.query?.token === 'string' ? req.query.token.trim() : '';
+  if (!token) {
+    res.status(400).send(
+      '<!DOCTYPE html><html><body><p>Missing unsubscribe token.</p><p><a href="https://repwatch.co">RepWatch</a></p></body></html>'
+    );
+    return;
+  }
+  try {
+    const userResult = await pool.query(
+      'SELECT id FROM users WHERE unsub_token = $1',
+      [token]
+    );
+    if (userResult.rows.length === 0) {
+      res.status(404).send(
+        '<!DOCTYPE html><html><body><p>Invalid or expired unsubscribe link.</p><p><a href="https://repwatch.co">RepWatch</a></p></body></html>'
+      );
+      return;
+    }
+    await pool.query(
+      `UPDATE rep_subscriptions SET paused_at = now(), updated_at = now()
+       WHERE user_id = $1`,
+      [userResult.rows[0].id]
+    );
+    res.set('Content-Type', 'text/html').send(
+      '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Unsubscribed</title></head><body><p>You’re unsubscribed. You won’t receive any more email updates from RepWatch.</p><p><a href="https://repwatch.co">Back to RepWatch</a></p></body></html>'
+    );
+  } catch (e) {
+    console.error('Unsubscribe error:', e);
+    res.status(500).send(
+      '<!DOCTYPE html><html><body><p>Something went wrong. Please try again later.</p><p><a href="https://repwatch.co">RepWatch</a></p></body></html>'
+    );
+  }
 });
 
 // Lookup representatives and their votes by address

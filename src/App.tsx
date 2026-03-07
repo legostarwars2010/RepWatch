@@ -18,7 +18,8 @@ function App() {
           <Link to="/" className="text-3xl font-light tracking-wider hover:opacity-80 transition-opacity">
             RepWatch
           </Link>
-          <p className="text-sm text-oled-secondary mt-2">Transparent government, accessible to all.</p>
+          <p className="text-sm text-oled-text mt-2">See how your representative actually votes — in plain English.</p>
+          <p className="text-xs text-oled-secondary mt-1">Enter your address to view recent votes, bill summaries, and outcomes.</p>
         </header>
 
         {/* Main Content */}

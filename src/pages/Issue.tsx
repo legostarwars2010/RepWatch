@@ -61,6 +61,7 @@ export default function Issue() {
   const [data, setData] = useState<IssueResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [showFullTitle, setShowFullTitle] = useState(false)
 
   useEffect(() => {
     if (!id) {
@@ -122,6 +123,8 @@ export default function Issue() {
     what_a_yea_vote_means?: string
     what_a_nay_vote_means?: string
     categories?: string[]
+    plain_english_title?: string
+    procedural_subtext?: string
   } | undefined
 
   const yeaCount = displayVotes.filter((v) => ['yea', 'yes', 'aye'].includes((v.vote || '').toLowerCase())).length
@@ -129,8 +132,13 @@ export default function Issue() {
   const presentCount = displayVotes.filter((v) => (v.vote || '').toLowerCase() === 'present').length
   const notVotingCount = displayVotes.filter((v) => (v.vote || '').toLowerCase() === 'not voting').length
 
-  const billLabel = issue.title || `Bill ${issue.canonical_bill_id || issue.bill_id || 'Unknown'}`
+  const rawTitle = issue.title || `Bill ${issue.canonical_bill_id || issue.bill_id || 'Unknown'}`
+  const preferredTitle = (ai?.plain_english_title && ai.plain_english_title.trim()) ? ai.plain_english_title.trim() : rawTitle
+  const TITLE_MAX = 100
+  const displayTitle = preferredTitle.length > TITLE_MAX ? `${preferredTitle.slice(0, TITLE_MAX).trim()}…` : preferredTitle
+  const billLabel = displayTitle
   const breadcrumbLabel = billLabel.length > 60 ? `${billLabel.slice(0, 60)}…` : billLabel
+  const showFullTitleToggle = preferredTitle.length > TITLE_MAX
 
   return (
     <PageShell>
@@ -140,9 +148,24 @@ export default function Issue() {
 
         {/* Title and outcome */}
         <div className="mb-8">
-          <h1 className="text-2xl md:text-3xl font-light text-oled-text mb-2">
-            {issue.title || `Bill ${issue.canonical_bill_id || issue.bill_id || 'Unknown'}`}
+          <h1 className="text-2xl md:text-3xl font-light text-oled-text mb-2" title={showFullTitle ? undefined : preferredTitle}>
+            {displayTitle}
           </h1>
+          {showFullTitleToggle && (
+            <button
+              type="button"
+              onClick={() => setShowFullTitle((v) => !v)}
+              className="text-sm text-oled-secondary hover:text-oled-text mb-2"
+            >
+              {showFullTitle ? 'Hide full title' : 'Show full title'}
+            </button>
+          )}
+          {showFullTitleToggle && showFullTitle && (
+            <p className="text-sm text-oled-secondary mb-2 whitespace-pre-wrap">{preferredTitle}</p>
+          )}
+          {ai?.procedural_subtext && ai.procedural_subtext.trim() && (
+            <p className="text-oled-secondary text-sm mb-1">{ai.procedural_subtext.trim()}</p>
+          )}
           {issue.canonical_bill_id && (
             <p className="text-oled-secondary text-sm mb-1">{formatBillId(issue.canonical_bill_id)}</p>
           )}

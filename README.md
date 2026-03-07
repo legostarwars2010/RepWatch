@@ -123,6 +123,15 @@ To run them manually after a vote ingest:
 `node scripts/fetch_bill_summaries.js --new --limit=50` then  
 `node scripts/generate_ai_summaries_for_votes.js --limit=50`.
 
+## Scheduled tasks (GitHub Actions)
+
+- **Weekly digest emails** (`.github/workflows/notify-daily.yml`)  
+  Runs **Sundays at 6:00 PM UTC** and sends one digest per subscriber with their reps’ last 5 House votes. Also runnable manually via **Actions → Weekly digest emails → Run workflow**.  
+  **Secrets required:** `DATABASE_URL` (production), `RESEND_API_KEY`. See [CHANGELOG.md](CHANGELOG.md) for setup.
+
+- **Daily ingest** (`.github/workflows/daily-ingest.yml`)  
+  Runs daily to refresh votes and summaries. Requires `DATABASE_URL`, `CONGRESS_API_KEY`, `OPENAI_API_KEY`.
+
 ## API Endpoints
 
 ### Lookup by Address
@@ -170,6 +179,7 @@ See [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md) for complete deployment instructi
 ```bash
 DATABASE_URL=postgresql://...        # PostgreSQL connection string
 OPENAI_API_KEY=sk-...                # OpenAI API key
+RESEND_API_KEY=re_...                # Resend API key (weekly digest emails)
 NODE_ENV=production                  # Environment mode
 PORT=8080                            # Server port
 ```

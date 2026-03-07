@@ -59,11 +59,16 @@ function getVoteIcon(vote: string): string {
   return '•'
 }
 
+type SubscribeState = 'idle' | 'form' | 'loading' | 'success' | 'error'
+
 export default function Representative() {
   const { id } = useParams<{ id: string }>()
   const [data, setData] = useState<RepResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [subscribeState, setSubscribeState] = useState<SubscribeState>('idle')
+  const [subscribeEmail, setSubscribeEmail] = useState('')
+  const [subscribeMessage, setSubscribeMessage] = useState('')
 
   useEffect(() => {
     if (!id) return
@@ -178,6 +183,85 @@ export default function Representative() {
             </div>
           )}
           </div>
+        </div>
+
+        {/* Subscribe to updates */}
+        <div className="mb-10 p-6 border border-oled-border rounded">
+          {subscribeState === 'success' ? (
+            <p className="text-oled-text text-sm">{subscribeMessage}</p>
+          ) : subscribeState === 'form' || subscribeState === 'loading' ? (
+            <form
+              onSubmit={(e) => {
+                e.preventDefault()
+                const email = subscribeEmail.trim()
+                if (!email || !rep.id) return
+                setSubscribeState('loading')
+                setSubscribeMessage('')
+                fetch(apiUrl('/api/subscribe'), {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ email, representative_ids: [Number(rep.id)] }),
+                })
+                  .then((res) => res.json().then((body) => ({ ok: res.ok, body })))
+                  .then(({ ok, body }) => {
+                    if (ok) {
+                      setSubscribeState('success')
+                      setSubscribeMessage(body.message || "You're subscribed. We'll send a weekly digest of this representative's votes to your email.")
+                    } else {
+                      setSubscribeState('form')
+                      setSubscribeMessage(body.error || 'Subscription failed.')
+                    }
+                  })
+                  .catch(() => {
+                    setSubscribeState('form')
+                    setSubscribeMessage('Something went wrong. Please try again.')
+                  })
+              }}
+              className="flex flex-col sm:flex-row gap-3 items-start"
+            >
+              <input
+                type="email"
+                value={subscribeEmail}
+                onChange={(e) => setSubscribeEmail(e.target.value)}
+                placeholder="Your email"
+                required
+                disabled={subscribeState === 'loading'}
+                className="px-3 py-2 border border-oled-border rounded bg-oled-bg text-oled-text placeholder-oled-secondary focus:outline-none focus:ring-1 focus:ring-oled-border min-w-[200px]"
+              />
+              <button
+                type="submit"
+                disabled={subscribeState === 'loading'}
+                className="px-4 py-2 rounded bg-oled-text text-oled-bg font-medium hover:opacity-90 disabled:opacity-50 transition-opacity"
+              >
+                {subscribeState === 'loading' ? 'Subscribing…' : 'Subscribe'}
+              </button>
+              {subscribeState !== 'loading' && (
+                <button
+                  type="button"
+                  onClick={() => { setSubscribeState('idle'); setSubscribeEmail(''); setSubscribeMessage('') }}
+                  className="text-sm text-oled-secondary hover:text-oled-text"
+                >
+                  Cancel
+                </button>
+              )}
+            </form>
+          ) : (
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setSubscribeState('form')}
+                className="px-4 py-2 rounded border border-oled-border text-oled-text font-medium hover:bg-oled-card transition-colors"
+              >
+                Subscribe to updates
+              </button>
+              <span className="text-sm text-oled-secondary">
+                Get a weekly email with this representative's recent votes.
+              </span>
+            </div>
+          )}
+          {subscribeMessage && subscribeState === 'form' && (
+            <p className="mt-2 text-sm text-red-400">{subscribeMessage}</p>
+          )}
         </div>
 
         {/* Votes */}

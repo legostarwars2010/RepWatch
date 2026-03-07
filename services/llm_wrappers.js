@@ -104,6 +104,10 @@ async function summarizeSingleChunk({ bill_id, title, description, bill_text, vo
     '- Tailor to the vote type (passage, amendment, cloture, rule, motion to recommit, concurrence, discharge). Use the vote_question and stage fields to pick the appropriate template.',
     '- If impact details aren\'t in the text, write: "Not specified in the provided text." Do not infer.',
     '',
+    'Procedural votes: When the vote_question is a procedural vote (e.g. "Providing for consideration of...", "On ordering the previous question", "On agreeing to the resolution", "On motion to suspend the rules"), you MUST add:',
+    '- plain_english_title: One short line (under 15 words) a non-expert can understand. Example: "Rule vote allowing debate on an energy policy bill". Extract the underlying bill topic from the question when possible (e.g. H.R. 4626 → energy policy).',
+    '- procedural_subtext: One line explaining the vote type. Example: "Procedural vote setting terms for House debate." or "Procedural vote to end debate and proceed to a vote."',
+    '',
     'Style:',
     '- Use neutral verbs: "requires", "authorizes", "prohibits", "funds", "repeals".',
     '- 1–2 sentences per vote meaning, max 45 words each.',
@@ -116,7 +120,9 @@ async function summarizeSingleChunk({ bill_id, title, description, bill_text, vo
     '4. vote_context: { vote_type: "passage|amendment|cloture|rule|recommit|concurrence|discharge", stage: "House floor|Senate floor|committee|conference", status_quo_brief: "One line: what the law/process is today" }',
     '5. what_a_yea_vote_means: concrete outcomes if YES vote succeeds',
     '6. what_a_nay_vote_means: what remains the same, what gets blocked',
-    '7. categories: array of 1-3 category tags like ["healthcare","taxation","environment","defense","economy","immigration","education","justice","energy","agriculture","foreign_policy","civil_rights","housing","transportation"]'
+    '7. categories: array of 1-3 category tags like ["healthcare","taxation","environment","defense","economy","immigration","education","justice","energy","agriculture","foreign_policy","civil_rights","housing","transportation"]',
+    '8. plain_english_title (optional, required for procedural votes): one short line for non-experts',
+    '9. procedural_subtext (optional, required for procedural votes): one line explaining the procedural vote type'
   ].join(' ');
 
   const user = JSON.stringify({
