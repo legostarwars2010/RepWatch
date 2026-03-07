@@ -1,0 +1,27 @@
+# Send weekly digest emails to subscribers (Sunday 6 PM UTC).
+# Add repository secret: RESEND_API_KEY (DATABASE_URL already used by daily ingest).
+#
+# Optional env (or set in Resend dashboard): NOTIFICATION_BASE_URL, FROM_EMAIL
+name: Weekly digest emails
+on:
+  schedule:
+    - cron: '0 18 * * 0'   # Sunday 6:00 PM UTC
+  workflow_dispatch:
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - name: Send daily digest
+        run: node scripts/send_daily_digest.js
+        env:
+          NODE_ENV: production
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          NOTIFICATION_BASE_URL: https://repwatch.co
+          FROM_EMAIL: 'RepWatch <updates@updates.repwatch.co>'

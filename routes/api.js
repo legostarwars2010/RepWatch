@@ -1,4 +1,5 @@
 const express = require("express");
+const crypto = require("crypto");
 const router = express.Router();
 const { getAllReps } = require("../models/reps");
 const { getIssueById, getCachedSummary, isSummaryFresh, isExplainFresh, writeSummary, writeExplain } = require("../models/issues");
@@ -33,6 +34,107 @@ setInterval(() => {
   console.log(`LLM cache hit rate: ${rate}% (${llmCacheHits}/${llmRequests})`);
 }, 60000);
 
+// Health check (no DB required) — for Render and debugging
+router.get('/health', (req, res) => {
+  res.json({ ok: true, service: 'repwatch-api' });
+});
+
+// ——— Email notifications (subscribe / unsubscribe) ———
+
+// POST /api/subscribe — subscribe email to one or more reps
+router.post('/subscribe', async (req, res) => {
+  const { pool } = require('../db/pool');
+  try {
+    const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : '';
+    const representativeIds = Array.isArray(req.body?.representative_ids)
+      ? req.body.representative_ids.filter((id) => Number.isInteger(id) && id > 0)
+      : [];
+
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.status(400).json({ error: 'Valid email required' });
+    }
+    if (representativeIds.length === 0) {
+      return res.status(400).json({ error: 'At least one representative_id required' });
+    }
+
+    const validReps = await pool.query(
+      'SELECT id FROM representatives WHERE id = ANY($1::int[])',
+      [representativeIds]
+    );
+    const validIds = validReps.rows.map((r) => r.id);
+    if (validIds.length === 0) {
+      return res.status(400).json({ error: 'No valid representative IDs found' });
+    }
+
+    const unsubToken = crypto.randomBytes(24).toString('hex');
+    const userResult = await pool.query(
+      `INSERT INTO users (email, unsub_token)
+       VALUES ($1, $2)
+       ON CONFLICT (email) DO UPDATE SET updated_at = now()
+       RETURNING id, unsub_token`,
+      [email, unsubToken]
+    );
+    const row = userResult.rows[0];
+    const userId = row.id;
+    const tokenToReturn = row.unsub_token;
+
+    for (const repId of validIds) {
+      await pool.query(
+        `INSERT INTO rep_subscriptions (user_id, representative_id)
+         VALUES ($1, $2)
+         ON CONFLICT (user_id, representative_id) DO UPDATE SET paused_at = NULL, updated_at = now()`,
+        [userId, repId]
+      );
+    }
+
+    res.status(200).json({
+      subscribed: true,
+      message: `Subscribed to ${validIds.length} representative(s). Check your inbox for updates.`,
+      unsub_token: tokenToReturn,
+    });
+  } catch (e) {
+    console.error('Subscribe error:', e);
+    res.status(500).json({ error: 'Subscription failed' });
+  }
+});
+
+// GET /api/unsubscribe?token=... — one-click unsubscribe (for email links); returns HTML
+router.get('/unsubscribe', async (req, res) => {
+  const { pool } = require('../db/pool');
+  const token = typeof req.query?.token === 'string' ? req.query.token.trim() : '';
+  if (!token) {
+    res.status(400).send(
+      '<!DOCTYPE html><html><body><p>Missing unsubscribe token.</p><p><a href="https://repwatch.co">RepWatch</a></p></body></html>'
+    );
+    return;
+  }
+  try {
+    const userResult = await pool.query(
+      'SELECT id FROM users WHERE unsub_token = $1',
+      [token]
+    );
+    if (userResult.rows.length === 0) {
+      res.status(404).send(
+        '<!DOCTYPE html><html><body><p>Invalid or expired unsubscribe link.</p><p><a href="https://repwatch.co">RepWatch</a></p></body></html>'
+      );
+      return;
+    }
+    await pool.query(
+      `UPDATE rep_subscriptions SET paused_at = now(), updated_at = now()
+       WHERE user_id = $1`,
+      [userResult.rows[0].id]
+    );
+    res.set('Content-Type', 'text/html').send(
+      '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Unsubscribed</title></head><body><p>You’re unsubscribed. You won’t receive any more email updates from RepWatch.</p><p><a href="https://repwatch.co">Back to RepWatch</a></p></body></html>'
+    );
+  } catch (e) {
+    console.error('Unsubscribe error:', e);
+    res.status(500).send(
+      '<!DOCTYPE html><html><body><p>Something went wrong. Please try again later.</p><p><a href="https://repwatch.co">RepWatch</a></p></body></html>'
+    );
+  }
+});
+
 // Lookup representatives and their votes by address
 router.get('/lookup', async (req, res) => {
   try {
@@ -54,7 +156,7 @@ router.get('/lookup', async (req, res) => {
     // Get representatives for this district
     const { pool } = require('../db/pool');
     const repsQuery = `
-      SELECT id, name, party, state, district, chamber, bioguide_id
+      SELECT id, name, party, state, district, chamber, bioguide_id, phone, website
       FROM representatives
       WHERE state = $1 AND (district = $2 OR district IS NULL)
       ORDER BY chamber DESC, district ASC NULLS FIRST
@@ -75,21 +177,37 @@ router.get('/lookup', async (req, res) => {
           v.vote_date,
           v.roll_call,
           v.chamber,
+          v.vote_metadata,
+          v.issue_id,
           i.canonical_bill_id as bill_id,
           i.title,
-          i.ai_summary
+          i.ai_summary,
+          i.categories
         FROM votes v
         LEFT JOIN issues i ON v.issue_id = i.id
         WHERE v.representative_id = $1
         ORDER BY v.vote_date DESC, v.roll_call DESC
-        LIMIT 50
+        LIMIT 500
       `;
       const { rows: votes } = await pool.query(votesQuery, [rep.id]);
       console.log(`Rep ${rep.name}: found ${votes.length} votes`);
       
+      // Merge categories into ai_summary; use vote_metadata.question as fallback title
+      const votesWithMergedData = votes.map(vote => {
+        const title = vote.title || (vote.vote_metadata && vote.vote_metadata.question) || null;
+        return {
+          ...vote,
+          title,
+          ai_summary: vote.ai_summary ? {
+            ...vote.ai_summary,
+            categories: vote.categories || vote.ai_summary.categories || []
+          } : null
+        };
+      });
+      
       return {
         ...rep,
-        votes
+        votes: votesWithMergedData
       };
     }));
 
@@ -126,7 +244,7 @@ router.get('/lookup-by-name', async (req, res) => {
     
     // Search for representatives by name (case-insensitive, partial match)
     const repsQuery = `
-      SELECT id, name, party, state, district, chamber, bioguide_id
+      SELECT id, name, party, state, district, chamber, bioguide_id, phone, website
       FROM representatives
       WHERE LOWER(name) LIKE LOWER($1)
       ORDER BY name ASC
@@ -149,20 +267,35 @@ router.get('/lookup-by-name', async (req, res) => {
           v.vote_date,
           v.roll_call,
           v.chamber,
+          v.vote_metadata,
+          v.issue_id,
           i.canonical_bill_id as bill_id,
           i.title,
-          i.ai_summary
+          i.ai_summary,
+          i.categories
         FROM votes v
         LEFT JOIN issues i ON v.issue_id = i.id
         WHERE v.representative_id = $1
         ORDER BY v.vote_date DESC, v.roll_call DESC
-        LIMIT 50
+        LIMIT 500
       `;
       const { rows: votes } = await pool.query(votesQuery, [rep.id]);
       
+      const votesWithMergedData = votes.map(vote => {
+        const title = vote.title || (vote.vote_metadata && vote.vote_metadata.question) || null;
+        return {
+          ...vote,
+          title,
+          ai_summary: vote.ai_summary ? {
+            ...vote.ai_summary,
+            categories: vote.categories || vote.ai_summary.categories || []
+          } : null
+        };
+      });
+      
       return {
         ...rep,
-        votes
+        votes: votesWithMergedData
       };
     }));
 
@@ -235,6 +368,133 @@ router.get('/issues', async (req, res) => {
   } catch (e) {
     console.error('issues list error:', e);
     res.status(500).json({ error: 'Failed to fetch issues' });
+  }
+});
+
+// GET /api/issues/:id — full issue with all votes and outcome (for issue detail page)
+router.get('/issues/:id', async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isFinite(id)) return res.status(400).json({ error: 'Invalid id' });
+
+    const { pool } = require('../db/pool');
+    const issueResult = await pool.query(
+      'SELECT id, title, description, canonical_bill_id, bill_id, bill_summary, ai_summary, categories, vote_date, source FROM issues WHERE id = $1',
+      [id]
+    );
+    const issue = issueResult.rows[0] || null;
+    if (!issue) return res.status(404).json({ error: 'Issue not found' });
+
+    // One row per representative: keep latest vote when an issue has multiple roll calls (e.g. passage + motion to recommit)
+    const votesResult = await pool.query(
+      `WITH ranked AS (
+         SELECT v.vote, v.vote_date, v.roll_call, v.vote_metadata,
+                r.id AS representative_id, r.name AS representative_name, r.party, r.state, r.district,
+                ROW_NUMBER() OVER (PARTITION BY r.id ORDER BY v.vote_date DESC NULLS LAST, COALESCE(v.roll_number, 0) DESC) AS rn
+         FROM votes v
+         JOIN representatives r ON v.representative_id = r.id
+         WHERE v.issue_id = $1
+       )
+       SELECT vote, vote_date, roll_call, vote_metadata,
+              representative_id, representative_name, party, state, district
+       FROM ranked
+       WHERE rn = 1`,
+      [id]
+    );
+    const votesUnsorted = votesResult.rows || [];
+    const votes = votesUnsorted.sort((a, b) => {
+      if (a.state !== b.state) return (a.state || '').localeCompare(b.state || '');
+      const da = a.district != null ? Number(a.district) : 9999;
+      const db = b.district != null ? Number(b.district) : 9999;
+      if (da !== db) return da - db;
+      return (a.representative_name || '').localeCompare(b.representative_name || '');
+    });
+
+    // Outcome: from any vote's metadata (same for all votes on this issue)
+    let result = null;
+    if (votes.length > 0 && votes[0].vote_metadata && typeof votes[0].vote_metadata === 'object') {
+      result = votes[0].vote_metadata.result || null;
+    }
+
+    res.json({
+      issue: {
+        id: issue.id,
+        title: issue.title,
+        description: issue.description,
+        canonical_bill_id: issue.canonical_bill_id,
+        bill_id: issue.bill_id,
+        bill_summary: issue.bill_summary,
+        ai_summary: issue.ai_summary,
+        categories: issue.categories,
+        vote_date: issue.vote_date,
+        source: issue.source
+      },
+      votes: votes.map((v) => ({
+        representative_id: v.representative_id,
+        representative_name: v.representative_name,
+        party: v.party,
+        state: v.state,
+        district: v.district,
+        vote: v.vote,
+        vote_date: v.vote_date,
+        roll_call: v.roll_call
+      })),
+      result
+    });
+  } catch (e) {
+    console.error('issue detail error:', e);
+    res.status(500).json({ error: 'Failed to fetch issue' });
+  }
+});
+
+// Official congressional photo URL (Biographical Directory of the United States Congress)
+function congressPhotoUrl(bioguideId) {
+  if (!bioguideId || typeof bioguideId !== 'string') return null;
+  const id = String(bioguideId).trim();
+  if (!id) return null;
+  const letter = id.charAt(0).toUpperCase();
+  return `https://bioguide.congress.gov/bioguide/photo/${letter}/${id}.jpg`;
+}
+
+// GET /api/reps/:id — single representative with all their votes (for rep detail page)
+router.get('/reps/:id', async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isFinite(id)) return res.status(400).json({ error: 'Invalid id' });
+
+    const { pool } = require('../db/pool');
+    const repResult = await pool.query(
+      `SELECT id, name, party, state, district, chamber, bioguide_id, phone, website, contact_json
+       FROM representatives WHERE id = $1`,
+      [id]
+    );
+    const row = repResult.rows[0] || null;
+    if (!row) return res.status(404).json({ error: 'Representative not found' });
+    const rep = { ...row, photo_url: congressPhotoUrl(row.bioguide_id) };
+
+    const votesResult = await pool.query(
+      `SELECT v.vote, v.vote_date, v.roll_call, v.chamber, v.vote_metadata, v.issue_id,
+              i.canonical_bill_id as bill_id, i.title, i.ai_summary, i.categories
+       FROM votes v
+       LEFT JOIN issues i ON v.issue_id = i.id
+       WHERE v.representative_id = $1
+       ORDER BY v.vote_date DESC, v.roll_call DESC
+       LIMIT 500`,
+      [id]
+    );
+    const votes = (votesResult.rows || []).map((v) => {
+      const title = v.title || (v.vote_metadata && v.vote_metadata.question) || null;
+      return {
+        ...v,
+        title,
+        ai_summary: v.ai_summary ? { ...v.ai_summary, categories: v.categories || v.ai_summary.categories || [] } : null
+      };
+    });
+
+    res.json({ representative: rep, votes });
+  } catch (e) {
+    console.error('rep detail error:', e);
+    res.status(500).json({ error: 'Failed to fetch representative' });
   }
 });
 
