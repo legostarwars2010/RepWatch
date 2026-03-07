@@ -7,6 +7,31 @@ export default function Changelog() {
         <h1 className="text-4xl font-light mb-8">Changelog</h1>
         
         <div className="space-y-8">
+          {/* Version 1.2.4 */}
+          <div className="border-l-2 border-oled-border/50 pl-6">
+            <div className="flex items-baseline gap-3 mb-2">
+              <h2 className="text-2xl font-light">v1.2.4</h2>
+              <span className="text-sm text-oled-secondary">February 26, 2026</span>
+            </div>
+            
+            <div className="space-y-4 text-oled-secondary">
+              <div>
+                <h3 className="text-lg text-oled-text mb-2">Weekly email digest</h3>
+                <ul className="list-disc list-inside space-y-1 ml-2">
+                  <li>Subscribe to get a weekly email (Sundays) with the last 5 House votes for each representative you follow.</li>
+                  <li>One-click unsubscribe in every email; signup and preferences stored securely.</li>
+                </ul>
+              </div>
+              
+              <div>
+                <h3 className="text-lg text-oled-text mb-2">Digest content</h3>
+                <ul className="list-disc list-inside space-y-1 ml-2">
+                  <li>Digest emails use clear bill titles (trimmed when long) and AI summaries; Congress.gov boilerplate is filtered out.</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
           {/* Version 1.2.3 */}
           <div className="border-l-2 border-oled-border/50 pl-6">
             <div className="flex items-baseline gap-3 mb-2">
