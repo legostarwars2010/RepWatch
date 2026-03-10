@@ -38,17 +38,21 @@ try {
   console.log('━━━ Step 1: House votes ━━━\n');
   run('ingest_house_votes.js', `--year=${currentYear}`);
 
+  // Step 2: Ingest new Senate votes and ensure issues
+  console.log('\n━━━ Step 2: Senate votes ━━━\n');
+  run('ingest_senate_votes.js', `--year=${currentYear}`);
+
   if (votesOnly) {
     console.log('\n✅ Daily ingest (votes only) finished.\n');
     process.exit(0);
   }
 
-  // Step 2: Fetch real bill titles and CRS summaries from Congress.gov (required for display)
-  console.log('\n━━━ Step 2: Bill titles (Congress.gov) ━━━\n');
+  // Step 3: Fetch real bill titles and CRS summaries from Congress.gov (required for display)
+  console.log('\n━━━ Step 3: Bill titles (Congress.gov) ━━━\n');
   run('fetch_bill_summaries.js', '--new --limit=50');
 
-  // Step 3: Generate AI summaries for issues that don't have one yet
-  console.log('\n━━━ Step 3: AI summaries ━━━\n');
+  // Step 4: Generate AI summaries for issues that don't have one yet
+  console.log('\n━━━ Step 4: AI summaries ━━━\n');
   run('generate_ai_summaries_for_votes.js', '--limit=50');
 
   console.log('\n✅ Daily ingest finished successfully.\n');

@@ -31,13 +31,18 @@ async function main() {
     // --new: only issues that need real titles (newly created from votes or still have motion text)
     const whereClause = newOnly
       ? `canonical_bill_id IS NOT NULL
+         AND canonical_bill_id NOT LIKE 'senate-roll:%'
          AND (bill_summary IS NULL
               OR title IS NULL
               OR title LIKE 'On Passage%'
               OR title LIKE 'On Motion%'
               OR title LIKE 'On Agreeing to%'
+              OR title LIKE 'On Cloture%'
+              OR title LIKE 'On the%'
+              OR title LIKE 'Motion to%'
+              OR title LIKE 'Bill %'
               OR title = description)`
-      : 'canonical_bill_id IS NOT NULL';
+      : "canonical_bill_id IS NOT NULL AND canonical_bill_id NOT LIKE 'senate-roll:%'";
     const orderBy = newOnly ? 'id DESC' : 'id';
 
     const { rows: issues } = await pool.query(

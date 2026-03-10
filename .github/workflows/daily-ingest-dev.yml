@@ -1,0 +1,29 @@
+# Run the full daily pipeline against the development database.
+# Keeps the dev DB in sync with fresh votes, bill titles, and AI summaries
+# so local development always has up-to-date data.
+#
+# Required repository secret: DEV_DB_URL  (your Neon dev branch connection string)
+# Optional secrets (same as prod): CONGRESS_API_KEY, OPENAI_API_KEY
+#
+# To trigger manually: Repo → Actions → "Daily ingest (dev)" → Run workflow
+name: Daily ingest (dev)
+on:
+  schedule:
+    - cron: '0 7 * * *'   # 7:00 AM UTC daily (1 hour after prod)
+  workflow_dispatch:       # allow manual run from Actions tab
+jobs:
+  ingest-dev:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - name: Run daily ingest (dev DB)
+        run: node scripts/daily_ingest.js
+        env:
+          DATABASE_URL: ${{ secrets.DEV_DB_URL }}
+          CONGRESS_API_KEY: ${{ secrets.CONGRESS_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}

@@ -7,6 +7,50 @@ export default function Changelog() {
         <h1 className="text-4xl font-light mb-8">Changelog</h1>
         
         <div className="space-y-8">
+          {/* Version 1.3.0 */}
+          <div className="border-l-2 border-oled-border/50 pl-6">
+            <div className="flex items-baseline gap-3 mb-2">
+              <h2 className="text-2xl font-light">v1.3.0</h2>
+              <span className="text-sm text-oled-secondary">March 10, 2026</span>
+            </div>
+
+            <div className="space-y-4 text-oled-secondary">
+              <div>
+                <h3 className="text-lg text-oled-text mb-2">Full Senate coverage</h3>
+                <ul className="list-disc list-inside space-y-1 ml-2">
+                  <li>All 100 senators and their roll call votes are now tracked alongside House members.</li>
+                  <li>Senators appear in address lookup results under a "Your Senators" section, separate from your House representative.</li>
+                  <li>Senate votes cover all vote types: legislation, confirmation votes, amendments, cloture motions, and procedural motions — each with a descriptive title showing exactly who or what was voted on.</li>
+                </ul>
+              </div>
+
+              <div>
+                <h3 className="text-lg text-oled-text mb-2">AI summaries for all vote types</h3>
+                <ul className="list-disc list-inside space-y-1 ml-2">
+                  <li>Nomination votes get plain-English summaries explaining who was confirmed and for what role.</li>
+                  <li>Amendment and procedural votes get summaries with legislative context.</li>
+                  <li>Bill votes use the same enriched pipeline as before.</li>
+                </ul>
+              </div>
+
+              <div>
+                <h3 className="text-lg text-oled-text mb-2">Representative page improvements</h3>
+                <ul className="list-disc list-inside space-y-1 ml-2">
+                  <li>Vote history now paginates — 25 votes shown at a time with a "Load more" button.</li>
+                  <li>Senators show their state and "Senator" label instead of a district number.</li>
+                </ul>
+              </div>
+
+              <div>
+                <h3 className="text-lg text-oled-text mb-2">Weekly digest emails</h3>
+                <ul className="list-disc list-inside space-y-1 ml-2">
+                  <li>Digest emails now include senators alongside House members.</li>
+                  <li>Senate vote titles show the actual nomination name or bill reference, not just "On the Nomination."</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
           {/* Version 1.2.4 */}
           <div className="border-l-2 border-oled-border/50 pl-6">
             <div className="flex items-baseline gap-3 mb-2">

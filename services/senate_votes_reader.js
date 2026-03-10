@@ -41,9 +41,16 @@ async function parseSenateXML(xml) {
   // Generate vote key
   const voteKey = makeVoteKey('senate', voteDate, rollNumber);
   
-  // Extract question/motion
-  const question = rollCall.vote_question || rollCall.question || rollCall.vote_title || '';
-  
+  // Extract question/motion — prefer the full descriptive title over the terse question
+  const question = rollCall.vote_question || rollCall.question || '';
+  // vote_title is the most human-readable: "Motion to Invoke Cloture: Motion to Proceed to S. 5"
+  // vote_question_text is also good: "On Cloture on the Motion to Proceed S. 5"
+  const vote_title = rollCall.vote_title || rollCall.vote_question_text || question || '';
+  // vote_document_text is the bill/nomination description: "A bill to require..."
+  const document_text = rollCall.vote_document_text || '';
+  // Full result text: "Cloture on the Motion to Proceed Agreed to (84-9, 3/5 majority required)"
+  const vote_result_text = rollCall.vote_result_text || '';
+
   // Extract bill reference
   const billRef = extractBillReferenceFromSenate(rollCall);
   let billKey = null;
@@ -68,6 +75,9 @@ async function parseSenateXML(xml) {
     roll_number: rollNumber,
     date: voteDate,
     question,
+    vote_title,
+    document_text,
+    vote_result_text,
     bill_reference: billRef ? formatBillNumber(billRef) : null,
     bill_key: billKey,
     result: result_text,

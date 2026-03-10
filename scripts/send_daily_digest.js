@@ -33,17 +33,18 @@ async function getSubscribersWithReps() {
   return [...byUser.values()];
 }
 
-/** Per-rep: last 5 House votes by date, deduped by bill_id + vote_date. Returns { rep_id, rep_name, state, district, party, votes }[]. */
+/** Per-rep: last 5 votes by date (any chamber), deduped by bill_id + vote_date. Returns { rep_id, rep_name, state, district, chamber, party, votes }[]. */
 async function getLast5VotesPerRep(repIds) {
   if (repIds.length === 0) return [];
   const result = await pool.query(
     `SELECT v.id AS vote_id, v.representative_id, v.vote_date, v.vote, v.roll_call, v.issue_id, v.vote_metadata,
             i.title AS issue_title, i.canonical_bill_id, i.bill_summary, i.ai_summary, i.description AS issue_description,
-            r.name AS rep_name, r.state AS rep_state, r.district AS rep_district, r.party AS rep_party
+            r.name AS rep_name, r.state AS rep_state, r.district AS rep_district, r.party AS rep_party,
+            r.chamber AS rep_chamber
      FROM votes v
      LEFT JOIN issues i ON v.issue_id = i.id
      JOIN representatives r ON v.representative_id = r.id
-     WHERE v.chamber = 'house' AND v.representative_id = ANY($1::int[])
+     WHERE v.representative_id = ANY($1::int[])
      ORDER BY v.representative_id, v.vote_date DESC NULLS LAST, v.id DESC`,
     [repIds]
   );
@@ -56,6 +57,7 @@ async function getLast5VotesPerRep(repIds) {
         rep_name: row.rep_name,
         state: row.rep_state,
         district: row.rep_district,
+        chamber: row.rep_chamber,
         party: row.rep_party,
         votes: [],
         seenKeys: new Set(),
@@ -98,7 +100,11 @@ function voteStyle(vote) {
 function repSubtitle(section) {
   const parts = [];
   if (section.state) parts.push(section.state);
-  if (section.district != null && section.district !== '') parts.push(`District ${section.district}`);
+  if (section.chamber === 'senate') {
+    parts.push('Senator');
+  } else if (section.district != null && section.district !== '' && section.district !== 0) {
+    parts.push(`District ${section.district}`);
+  }
   const loc = parts.length ? parts.join(' ') : '';
   if (section.party && String(section.party).trim()) return loc ? `${loc} • ${section.party}` : section.party;
   return loc || '';
@@ -106,15 +112,19 @@ function repSubtitle(section) {
 
 const EMAIL_TITLE_MAX = 72;
 
-/** Bill title: prefer AI plain-English for procedural votes, else issue title, Clerk question, or bill ID */
+/** Bill title: prefer AI plain-English, else issue title, vote_title (senate), question, or bill ID */
 function billTitle(v) {
   const ai = v.ai_summary && typeof v.ai_summary === 'object';
   if (ai && v.ai_summary.plain_english_title && String(v.ai_summary.plain_english_title).trim())
     return String(v.ai_summary.plain_english_title).trim();
   if (v.issue_title && String(v.issue_title).trim()) return v.issue_title.trim();
-  const q = v.vote_metadata && typeof v.vote_metadata === 'object' && v.vote_metadata.question;
+  const meta = v.vote_metadata && typeof v.vote_metadata === 'object' ? v.vote_metadata : {};
+  const vt = meta.vote_title;
+  if (vt && typeof vt === 'string' && vt.trim()) return vt.trim();
+  const q = meta.question;
   if (q && typeof q === 'string' && q.trim()) return q.trim();
-  if (v.canonical_bill_id) return String(v.canonical_bill_id);
+  if (v.canonical_bill_id && !String(v.canonical_bill_id).startsWith('senate-roll:'))
+    return String(v.canonical_bill_id);
   return '—';
 }
 
@@ -217,7 +227,7 @@ function htmlDigest(userEmail, unsubToken, repSections) {
   <div style="max-width: 600px; margin: 0 auto; padding: 24px;">
     <h1 style="font-size: 24px; font-weight: 700; margin: 0 0 4px 0; color: #111827;">RepWatch Weekly</h1>
     <p style="font-size: 16px; font-weight: 500; margin: 0 0 8px 0; color: #374151;">How your representatives voted this week</p>
-    <p style="margin: 0 0 24px 0; font-size: 14px; color: #6b7280;">Here are the 5 most recent House votes for each representative you follow.</p>
+    <p style="margin: 0 0 24px 0; font-size: 14px; color: #6b7280;">Here are the 5 most recent votes for each representative you follow.</p>
     <div style="height: 1px; background: #e5e7eb; margin: 0 0 8px 0;"></div>
     ${weekSummary ? `<p style="margin: 16px 0 0 0; font-size: 14px; color: #374151;">This week:</p><p style="margin: 4px 0 0 0; font-size: 14px; color: #6b7280;">${weekSummary}</p>` : ''}
     ${sections}

@@ -42,6 +42,15 @@ export default function Home() {
   const [loading, setLoading] = useState(false)
   const [reps, setReps] = useState<Representative[]>([])
   const [error, setError] = useState('')
+  const [openVotes, setOpenVotes] = useState<Set<number>>(new Set())
+
+  const toggleVotes = (index: number) => {
+    setOpenVotes(prev => {
+      const next = new Set(prev)
+      next.has(index) ? next.delete(index) : next.add(index)
+      return next
+    })
+  }
 
   const getVoteIcon = (vote: string) => {
     const voteUpper = vote.toUpperCase()
@@ -73,8 +82,13 @@ export default function Home() {
 
       if (!response.ok) throw new Error('Failed to find representative')
       const data = await response.json()
-      const houseReps = data.representatives?.filter((rep: Representative) => rep.chamber === 'house') || []
-      setReps(houseReps)
+      // Show all reps: senators first (state-wide), then house
+      const allReps: Representative[] = data.representatives || []
+      const sorted = [
+        ...allReps.filter(r => r.chamber === 'senate'),
+        ...allReps.filter(r => r.chamber !== 'senate'),
+      ]
+      setReps(sorted)
     } catch (err) {
       console.error('Search error:', err)
       setError('Could not find representative. Please check the address/name and try again.')
@@ -118,12 +132,26 @@ export default function Home() {
       {reps.length > 0 && (
         <div className="max-w-2xl mx-auto space-y-4">
           {reps.map((rep, repIndex) => {
-            const districtDisplay = rep.district === null || rep.district === 0 ? 'At-Large' : `District ${rep.district}`
+            const isSenator = rep.chamber === 'senate'
+            const districtDisplay = isSenator
+              ? 'Senator'
+              : rep.district === null || rep.district === 0
+                ? 'At-Large'
+                : `District ${rep.district}`
             const partyClass = rep.party?.toLowerCase() || ''
             const votesToShow = (rep.votes || []).slice(0, 5)
+            // Section label before the first senator and before the first house rep
+            const prevChamber = repIndex > 0 ? reps[repIndex - 1].chamber : null
+            const showSectionLabel = repIndex === 0 || prevChamber !== rep.chamber
             
             return (
-              <div key={repIndex} className="p-6 border border-oled-border rounded">
+              <div key={repIndex}>
+              {showSectionLabel && (
+                <h2 className="text-xs font-semibold uppercase tracking-widest text-oled-secondary mb-2 mt-2">
+                  {isSenator ? 'Your Senators' : 'Your House Representative'}
+                </h2>
+              )}
+              <div className="p-6 border border-oled-border rounded">
                 <div className="mb-4">
                   <h2 className="text-2xl font-light mb-2">
                     {rep.id != null ? (
@@ -180,16 +208,25 @@ export default function Home() {
                 </div>
                 
                 <div>
-                  <div className="flex items-center justify-between gap-3 mb-3">
-                    <h3 className="text-lg font-medium">Recent votes</h3>
-                    {rep.votes && rep.votes.length > 5 && (
-                      <span className="text-xs text-oled-secondary">
-                        Showing 5 of {rep.votes.length} votes
-                      </span>
-                    )}
-                  </div>
-                  {votesToShow && votesToShow.length > 0 ? (
-                    <div className="space-y-3">
+                  <button
+                    type="button"
+                    onClick={() => toggleVotes(repIndex)}
+                    className="w-full flex items-center justify-between gap-3 py-2 text-left group"
+                  >
+                    <h3 className="text-lg font-medium group-hover:text-oled-secondary transition-colors">
+                      Recent votes
+                      {rep.votes && rep.votes.length > 0 && (
+                        <span className="ml-2 text-sm font-normal text-oled-secondary">
+                          ({rep.votes.length})
+                        </span>
+                      )}
+                    </h3>
+                    <span className="text-oled-secondary text-sm transition-transform duration-200" style={{ display: 'inline-block', transform: openVotes.has(repIndex) ? 'rotate(180deg)' : 'rotate(0deg)' }}>
+                      ▾
+                    </span>
+                  </button>
+                  {openVotes.has(repIndex) && (votesToShow && votesToShow.length > 0 ? (
+                    <div className="space-y-3 mt-3">
                       {votesToShow.map((vote, voteIndex) => {
                         const voteDate = new Date(vote.vote_date).toLocaleDateString('en-US', {
                           year: 'numeric',
@@ -241,9 +278,10 @@ export default function Home() {
                       })}
                     </div>
                   ) : (
-                    <p className="text-oled-secondary text-sm">No recent votes available.</p>
-                  )}
+                    <p className="text-oled-secondary text-sm mt-3">No recent votes available.</p>
+                  ))}
                 </div>
+              </div>
               </div>
             )
           })}

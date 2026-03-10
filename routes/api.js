@@ -192,9 +192,11 @@ router.get('/lookup', async (req, res) => {
       const { rows: votes } = await pool.query(votesQuery, [rep.id]);
       console.log(`Rep ${rep.name}: found ${votes.length} votes`);
       
-      // Merge categories into ai_summary; use vote_metadata.question as fallback title
+      // Prefer vote_title (rich: "Motion to Invoke Cloture: Motion to Proceed to S. 5")
+      // over the terse question ("On Cloture on the Motion to Proceed")
       const votesWithMergedData = votes.map(vote => {
-        const title = vote.title || (vote.vote_metadata && vote.vote_metadata.question) || null;
+        const vm = vote.vote_metadata || {};
+        const title = vote.title || vm.vote_title || vm.question || null;
         return {
           ...vote,
           title,
@@ -282,7 +284,8 @@ router.get('/lookup-by-name', async (req, res) => {
       const { rows: votes } = await pool.query(votesQuery, [rep.id]);
       
       const votesWithMergedData = votes.map(vote => {
-        const title = vote.title || (vote.vote_metadata && vote.vote_metadata.question) || null;
+        const vm = vote.vote_metadata || {};
+        const title = vote.title || vm.vote_title || vm.question || null;
         return {
           ...vote,
           title,
@@ -483,7 +486,8 @@ router.get('/reps/:id', async (req, res) => {
       [id]
     );
     const votes = (votesResult.rows || []).map((v) => {
-      const title = v.title || (v.vote_metadata && v.vote_metadata.question) || null;
+      const vm = v.vote_metadata || {};
+      const title = v.title || vm.vote_title || vm.question || null;
       return {
         ...v,
         title,

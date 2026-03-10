@@ -4,6 +4,29 @@ All notable changes to RepWatch are documented here.
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-03-10
+
+### Added
+
+- **Full Senate coverage** – All 100 senators and their roll call votes are now tracked alongside House members.
+  - `scripts/ingest_senate_votes.js` – Daily pipeline for Senate XML roll calls covering bills, nominations, amendments, and procedural motions.
+  - `scripts/backfill_senator_lis_ids.js` – One-time script to stamp LIS IDs onto existing senator records for vote matching.
+  - `scripts/backfill_senate_vote_metadata.js` – Fast parallel script to enrich existing votes with `vote_title`, `document_text`, and `vote_result_text` from Senate.gov XML.
+  - `scripts/ingest_state.js` – Now stores the full `external_ids` object (including `lis` ID) for senators so vote matching works correctly.
+- **Issues for all Senate vote types** – Nominations, amendments, cloture motions, and procedural votes each get their own issue record with a descriptive title (e.g. "Confirmation: John Smith, of Texas, to be…") instead of a generic label.
+- **AI summaries for Senate rolls** – `generate_ai_summaries_for_votes.js` extended to cover nomination and procedural vote issues, passing `vote_title` and `vote_result_text` as LLM context.
+- **Daily dev DB sync** – `.github/workflows/daily-ingest-dev.yml` runs the full pipeline against `DEV_DB_URL` daily to keep local development in sync.
+
+### Changed
+
+- **Home page** – Senators now appear in search results grouped under "Your Senators" / "Your House Representative" section headers. Recent votes section is collapsible.
+- **Representative page** – Vote list paginates at 25 per page with a "Load more (N remaining)" button. Senators display "Senator" instead of "At-Large". Vote titles now prefer `vote_metadata.vote_title`.
+- **Weekly digest emails** – `send_daily_digest.js` now covers both chambers; senator subtitle shows state + "Senator" instead of district number.
+- **`daily_ingest.js`** – Senate vote ingest added as Step 2 in the daily pipeline.
+- **`fetch_bill_summaries.js`** – `--new` mode now excludes synthetic `senate-roll:` IDs and targets additional Senate-style stub title patterns.
+- **`routes/api.js`** – Title fallback chain prefers `vote_metadata.vote_title` for all endpoints.
+- **Data Sources page** – Updated to document all five sources (House Clerk, Senate.gov, Congress.gov API, congress-legislators, Census TIGERweb) and the full four-step daily pipeline.
+
 ## [1.1.0] - 2025-02-26
 
 ### Added

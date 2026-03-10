@@ -90,6 +90,7 @@ async function ingestRepresentatives() {
           chamber = EXCLUDED.chamber,
           district = EXCLUDED.district,
           contact_json = EXCLUDED.contact_json,
+          external_ids = EXCLUDED.external_ids,
           phone = EXCLUDED.phone,
           website = EXCLUDED.website,
           updated_at = NOW()
@@ -102,7 +103,7 @@ async function ingestRepresentatives() {
         chamber,
         district,
         contactJson,
-        { bioguide: bio.bioguide },
+        { ...bio },
         term.phone || null,
         term.url || null
       ]);

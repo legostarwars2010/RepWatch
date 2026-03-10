@@ -13,7 +13,7 @@ interface Vote {
   issue_id: number | null
   bill_id: string | null
   title: string | null
-  vote_metadata?: { question?: string }
+  vote_metadata?: { question?: string; vote_title?: string }
   ai_summary?: {
     short_summary?: string
     categories?: string[]
@@ -69,6 +69,7 @@ export default function Representative() {
   const [subscribeState, setSubscribeState] = useState<SubscribeState>('idle')
   const [subscribeEmail, setSubscribeEmail] = useState('')
   const [subscribeMessage, setSubscribeMessage] = useState('')
+  const [visibleCount, setVisibleCount] = useState(25)
 
   useEffect(() => {
     if (!id) return
@@ -105,7 +106,11 @@ export default function Representative() {
 
   const { representative: rep, votes } = data
   const partyClass = (rep.party || '').toLowerCase()
-  const districtDisplay = rep.district === null || rep.district === 0 ? 'At-Large' : `District ${rep.district}`
+  const districtDisplay = rep.chamber === 'senate'
+    ? 'Senator'
+    : rep.district === null || rep.district === 0
+      ? 'At-Large'
+      : `District ${rep.district}`
   const initials = rep.name ? rep.name.split(/\s+/).map((n) => n.charAt(0)).join('').slice(0, 2).toUpperCase() : '?'
 
   return (
@@ -266,7 +271,12 @@ export default function Representative() {
 
         {/* Votes */}
         <section>
-          <h2 className="text-lg font-medium text-oled-text mb-3">Recent votes ({votes.length})</h2>
+          <h2 className="text-lg font-medium text-oled-text mb-3">
+            Recent votes
+            <span className="text-oled-secondary font-normal text-sm ml-2">
+              showing {Math.min(visibleCount, votes.length)} of {votes.length}
+            </span>
+          </h2>
           <div className="overflow-x-auto border border-oled-border rounded">
             <table className="w-full text-sm">
               <thead>
@@ -278,11 +288,11 @@ export default function Representative() {
                 </tr>
               </thead>
               <tbody>
-                {votes.map((v) => {
+                {votes.slice(0, visibleCount).map((v) => {
                   const voteDate = v.vote_date
                     ? new Date(v.vote_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
                     : '—'
-                  const title = v.title || v.vote_metadata?.question || `Vote ${v.roll_call || ''}`
+                  const title = v.title || v.vote_metadata?.vote_title || v.vote_metadata?.question || `Vote ${v.roll_call || ''}`
                   return (
                     <tr key={v.roll_call || `${v.vote_date}-${v.bill_id}`} className="border-b border-oled-border/50 hover:bg-oled-card/30">
                       <td className="py-2 px-3 text-oled-secondary whitespace-nowrap">{voteDate}</td>
@@ -303,7 +313,7 @@ export default function Representative() {
                         ) : (
                           title.length > 80 ? `${title.substring(0, 80)}...` : title
                         )}
-                        {v.bill_id && (
+                        {v.bill_id && !v.bill_id.startsWith('senate-roll:') && (
                           <div className="text-xs text-oled-secondary mt-0.5">{formatBillId(v.bill_id)}</div>
                         )}
                       </td>
@@ -323,6 +333,14 @@ export default function Representative() {
               </tbody>
             </table>
           </div>
+          {visibleCount < votes.length && (
+            <button
+              onClick={() => setVisibleCount(c => c + 25)}
+              className="mt-3 w-full py-2 text-sm text-oled-secondary border border-oled-border rounded hover:bg-oled-card hover:text-oled-text transition-colors"
+            >
+              Load more ({votes.length - visibleCount} remaining)
+            </button>
+          )}
         </section>
       </div>
     </PageShell>
