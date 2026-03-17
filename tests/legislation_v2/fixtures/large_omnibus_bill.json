@@ -1,0 +1,20 @@
+{
+  "kind": "bill",
+  "name": "large_omnibus_bill",
+  "input": {
+    "bill_id": "hr7000-119",
+    "title": "Consolidated Budget and Infrastructure Omnibus Act",
+    "official_summary": "A broad appropriations and infrastructure package funding transportation, energy, water systems, and emergency resilience grants across multiple agencies.",
+    "current_status": "Passed House",
+    "text_sections": [
+      {
+        "heading": "Section 101. Transportation Funding",
+        "text": "Appropriates funds for rail modernization, bridge repair, and transit expansion with a five-year authorization period."
+      },
+      {
+        "heading": "Section 201. Grid Reliability",
+        "text": "Creates grants for regional transmission upgrades and grid hardening projects managed by the Department of Energy."
+      }
+    ]
+  }
+}

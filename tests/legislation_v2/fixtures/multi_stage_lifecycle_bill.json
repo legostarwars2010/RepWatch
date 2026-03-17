@@ -1,0 +1,28 @@
+{
+  "kind": "lifecycle",
+  "name": "multi_stage_lifecycle_bill",
+  "input": {
+    "bill_status": "Passed Senate",
+    "latest_action_text": "Received in the House and referred to the Committee on Energy and Commerce.",
+    "action_history": [
+      {
+        "actionDate": "2026-01-10T00:00:00Z",
+        "actionText": "Introduced in Senate and read twice.",
+        "stage": "introduced"
+      },
+      {
+        "actionDate": "2026-02-03T00:00:00Z",
+        "actionText": "Reported by committee with amendment.",
+        "stage": "committee"
+      },
+      {
+        "actionDate": "2026-03-01T00:00:00Z",
+        "actionText": "Passed Senate by recorded vote.",
+        "stage": "passed_senate"
+      }
+    ]
+  },
+  "expected": {
+    "current_stage": "passed_senate"
+  }
+}

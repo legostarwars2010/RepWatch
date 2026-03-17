@@ -1,0 +1,18 @@
+{
+  "kind": "vote",
+  "name": "procedural_vote",
+  "input": {
+    "vote_type": "procedural",
+    "vote_question": "On ordering the previous question for H.R. 1234",
+    "vote_result": "Passed",
+    "linked_bill": {
+      "bill_type": "hr",
+      "bill_number": "1234",
+      "title": "Energy Infrastructure Permitting Act"
+    }
+  },
+  "expected": {
+    "vote_type": "procedural",
+    "procedural_flag": true
+  }
+}

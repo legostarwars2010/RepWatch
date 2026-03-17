@@ -1,0 +1,18 @@
+{
+  "kind": "vote",
+  "name": "final_passage_vote",
+  "input": {
+    "vote_type": "passage",
+    "vote_question": "On Passage of H.R. 4020",
+    "vote_result": "Passed",
+    "linked_bill": {
+      "bill_type": "hr",
+      "bill_number": "4020",
+      "title": "Child Nutrition Reauthorization Act"
+    }
+  },
+  "expected": {
+    "vote_type": "passage",
+    "procedural_flag": false
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "kind": "bill",
+  "name": "minimal_summary_bill",
+  "input": {
+    "bill_id": "s55-119",
+    "title": "Records Digitization Act",
+    "official_summary": "Directs an agency to digitize specified records and report to Congress annually.",
+    "current_status": "Introduced",
+    "text_sections": [
+      {
+        "heading": "Section 1",
+        "text": "The agency shall digitize records listed in Appendix A and submit annual progress reports."
+      }
+    ]
+  }
+}

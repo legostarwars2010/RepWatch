@@ -1,0 +1,18 @@
+{
+  "kind": "vote",
+  "name": "amendment_vote",
+  "input": {
+    "vote_type": "amendment",
+    "vote_question": "On agreeing to the Johnson Amendment No. 15",
+    "vote_result": "Rejected",
+    "linked_bill": {
+      "bill_type": "s",
+      "bill_number": "881",
+      "title": "Public Lands Funding Act"
+    }
+  },
+  "expected": {
+    "vote_type": "amendment",
+    "procedural_flag": false
+  }
+}
